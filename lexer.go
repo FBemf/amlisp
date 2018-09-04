@@ -11,7 +11,7 @@ import "regexp"
 
 // The basic components of an amlisp program after
 // all the reader macros have run.
-type Primitive struct {
+type primitive struct {
         kind int
         content string
 }
@@ -23,42 +23,53 @@ const (
 )
 
 
-const rWhitespace *regexp.Regexp = regexp.MustCompile(`^[\s,]`)
-const rOpenParen *regexp.Regexp = regexp.MustCompile(`^(`)
-const rCloseParen *regexp.Regexp = regexp.MustCompile(`^)`)
-const rWord *regexp.Regexp = regexp.MustCompile(`^\\.|[!-'*-\[\]-~]`)
-// word matches anything except ()\
-// and accepts escapes
+// Turns code into a list of primitives
+func getPrimitives(code string) []primitive {
 
-const rInt *regexp.Regexp = regexp.MustCompile(`^\d+$`)
-const rFloat *regexp.Regexp = regexp.MustCompile(`^\d+\.\d+$`)
+        rWhitespace := regexp.MustCompile(`^[\s,]`)
+        rOpenParen := regexp.MustCompile(`^\(`)
+        rCloseParen := regexp.MustCompile(`^\)`)
+        rWord := regexp.MustCompile(`^(?:(?:\\.)|[!-'*-\[\]-~])+`)
+        // word matches anything except ()\
+        // and accepts escapes
 
-// Turns code into a list of Primitives
-func GetPrimitives(code []char) []Primitive {
-        prims := make([]Primitive, 0)
+        prims := make([]primitive, 0)
         for {
-                var a, b int
-                a, b = rWhitespace.grab(code)
+                var a, b string
+                a, b = grab(rWhitespace, code)
                 if len(a) != 0 {
                         code = b
                         continue
                 }
-                a, b = rOpenParen.grab(code)
+                a, b = grab(rOpenParen, code)
                 if len(a) != 0 {
                         code = b
-                        prims = append(prims, Primitive{openParen, nil})
+                        prims = append(prims, primitive{openParen, ""})
                         continue
                 }
-                a, b = rCloseParen.grab(code)
+                a, b = grab(rCloseParen, code)
                 if len(a) != 0 {
                         code = b
-                        prims = append(prims, Primitive{closeParen, nil})
+                        prims = append(prims, primitive{closeParen, ""})
                         continue
                 }
-                a, b = rWord.grab(code)
+                a, b = grab(rWord, code)
                 if len(a) != 0 {
                         code = b
-                        prims = append(prims, Primitive{symbol, a})
+                        // The below block handles the escape character
+                        // The regex matches, it, this bit removes it
+                        c := make([]rune, 0)
+                        for i := 0; i < len(a); i++ {
+                                if a[i] == '\\' {
+                                        if i < len(a)-1 {
+                                                c = append(c, rune(a[i+1]))
+                                                i++
+                                        }
+                                } else {
+                                        c = append(c, rune(a[i]))
+                                }
+                        }
+                        prims = append(prims, primitive{symbol, string(c)})
                         continue
                 }
                 break
@@ -67,7 +78,11 @@ func GetPrimitives(code []char) []Primitive {
 }
 
 // Returns the first match and the rest of the string
-func (re *regexp.Regexp) grab(s string) (string, string) {
-        loc := re.regexp.FindStringIndex(s)
-        return s[loc[0]:loc[1]], s[loc[1]:]
+func grab(re *regexp.Regexp, s string) (string, string) {
+        loc := re.FindStringIndex(s)
+        if len(loc) > 0 {
+                return s[loc[0]:loc[1]], s[loc[1]:]
+        } else {
+                return "", ""
+        }
 }

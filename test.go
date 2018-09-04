@@ -10,9 +10,9 @@ func main() {
         for {
                 reader := bufio.NewReader(os.Stdin)
                 fmt.Print("Enter code: ")
-                text, _ := reader.ReadSlice('\n')
-                p := GetPrimitives(text)
-                fmt.Println(text)
+                text, _ := reader.ReadString('\n')
+                p := getPrimitives(text)
+                fmt.Println(p)
         }
         return
 }
