@@ -1,25 +1,23 @@
 package lexparse
 
-import "fmt"
-
 // This one turns the token list into
 // an AST.
 
-type ast interface {
+type Ast interface {
 	Node() *node
 }
 
-func Parse(prims []primitive) (ast, error) {
-	s := stack{nil} // stack of nodes to back up through tree structure
+func Parse(prims []primitive) (Ast, error) {
+	s := stack{} // stack of nodes to back up through tree structure
 	a := new(node)
+        top := a
 
 	for _, p := range prims {
-		fmt.Println(p)
 		switch p.kind { // Symbol, openParen, closeParen, LitInt, LitFloat, LitChar
 		case openParen:
 			s.push(a)
 			a.left = new(node)
-			a = a.left.Node()
+			a = a.left.(*node)
 		case closeParen:
 			b, ok := s.pop()
 			if ok == false {
@@ -29,26 +27,17 @@ func Parse(prims []primitive) (ast, error) {
 			a.right = nil
 			a = b
 			a.right = new(node)
-			a = a.right.Node()
+			a = a.right.(*node)
 		default:
 			a.left = p
 			a.right = new(node)
-			a = a.right.Node()
+			a = a.right.(*node)
 		}
 	}
 	if !s.isEmpty() {
 		return nil, errorString{"Unterminated '('"}
 	}
-
-	for {
-		if b, ok := s.pop(); ok {
-			a = b
-		} else {
-                        break
-                }
-	}
-
-	return a, nil
+	return top, nil
 }
 
 type errorString struct {
@@ -97,18 +86,18 @@ func (p primitive) Node() *node {
 
 // AST nodes
 type node struct {
-	left  ast
-	right ast
+	left  Ast
+	right Ast
 }
 
-func (n node) This() ast {
+func (n *node) This() Ast {
 	return n.left
 }
 
-func (n node) Next() ast {
+func (n *node) Next() Ast {
 	return n.right
 }
 
-func (n node) Node() *node {
-	return &n
+func (n *node) Node() *node {
+	return n
 }
