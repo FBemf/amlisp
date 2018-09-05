@@ -4,6 +4,7 @@ import (
         "bufio"
         "fmt"
         "os"
+        "./lexparse"
 )
 
 func main() {
@@ -11,8 +12,11 @@ func main() {
                 reader := bufio.NewReader(os.Stdin)
                 fmt.Print("Enter code: ")
                 text, _ := reader.ReadString('\n')
-                p := getPrimitives(text)
+                p := lexparse.Lex(text)
                 fmt.Println(p)
+                t, ok := lexparse.Parse(p)
+                fmt.Println(t)
+                fmt.Println(ok)
         }
         return
 }
