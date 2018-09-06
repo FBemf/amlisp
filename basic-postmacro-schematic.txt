@@ -1,0 +1,51 @@
+- Value of last expression is returned.
+
+
+Basic functions:
+        quote -- turns elements of the code structure into internal data
+        +-*/%<><=>= -- all the math things
+        cons, car, cdr
+        caddadr and friends
+        and, or -- evaluate combinations of truthy or falsey values
+        if
+        do
+        define
+        vector
+        func
+
+Todo in lexparse: Recognize bools, vectors, strings? Not urgent.
+
+
+Evaluating the above commands: How does the VM work?
+        func turns tree into a new block of bytecode
+        Closures have environment pointers.
+
+Basic structure:
+        Calling a function creates a new environment frame
+        This frame holds arguments, new definitions, and
+        the return value--either a value or a function call.
+        
+This is the first iteration of bytecode, where functions and vars are
+held in a symbol table. The next pass consolidates them.
+CALL:function_id:env_id:return_loc:arg1:arg2;
+becomes
+CALL:pc_address:env_address:return_loc:arg1:arg2;
+A function is passed as a tuple of a function id and an env id. The function
+id is the id of a pointer to the function's location in the instruction list, and the 
+env id is the id of a pointer to the environment's location in the data list.
+There's also one for calling builtins, which has a unique id instead of pc_address.
+
+The first thing the program does is say, "I want to get the return value from this function at this
+address." The program has the instruction location of the function, the memory location of its env (null),
+the location to write the return value to, and its arguments. The first thing it does is create a
+new env. The return location and the arguments are stored here, as well as anything that is defined here.
+Next, it goes through its contents. Either definitions or expressions. Definitions are evaluated and
+stored in the env. Expressions are evaluated and stored to the return location. When the function
+finishes, it stops.
+
+Garbage collection is done by reference counting, since it means less work on the part of the runtime.
+Each memory allocation is preceded by a reference number, which is incremented every time a pointer to it
+is allocated, and decremented every time a pointer to it goes out of scope. The runtime maintains a link-list
+of allocated memory, and every time memory is allocated, the link-list is searched for an open space
+large enough for the new thing. When the link-list is queried, every entry has its reference number checked
+in order to check to see if the number of references is zero. If it is, that link is removed from the list.
