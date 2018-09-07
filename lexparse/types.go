@@ -2,7 +2,7 @@ package lexparse
 
 type Ast interface {
 	Node() *node
-        Primitive() *primitive
+	Primitive() *primitive
 }
 
 type errorString struct {
@@ -50,7 +50,7 @@ func (p *primitive) Node() *node {
 }
 
 func (p *primitive) Primitive() *primitive {
-        return p
+	return p
 }
 
 func (n *node) This() Ast {
@@ -66,5 +66,5 @@ func (n *node) Node() *node {
 }
 
 func (n *node) Primitive() *primitive {
-        return nil
+	return nil
 }

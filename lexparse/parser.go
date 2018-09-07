@@ -12,7 +12,7 @@ type node struct {
 func Parse(prims []primitive) (Ast, error) {
 	s := stack{} // stack of nodes to back up through tree structure
 	a := new(node)
-        top := a
+	top := a
 
 	for _, p := range prims {
 		switch p.kind { // Symbol, openParen, closeParen, LitInt, LitFloat, LitChar
@@ -41,4 +41,3 @@ func Parse(prims []primitive) (Ast, error) {
 	}
 	return top, nil
 }
-
