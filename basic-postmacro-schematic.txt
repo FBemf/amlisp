@@ -70,6 +70,7 @@ Formal definitions of functions:
                 func struture with a pc pointer and an env pointer that points to the env in which it was
                 created. When a ref to that structure is used as a function, it takes an ll of arguments and
                 creates a new env to run in and jumps the pc, storing the old pc in the env to return to.
+        cons?, empty?, vector?, int?, float?, char?, symbol?: Return bool by type.
 
 Executing a function:
         1. Requires: Either the symbol of a builtin or a symbol pointing to a func struct, a freshly allocated
@@ -96,8 +97,20 @@ If we do, it goes like this:
 Versus:
         When program wants to allocate, it calls "NEW 7" for a new memory slot 7 long.
         The compiler has a list of used memory zones, and it'll find a gap long enough and assign it.
-        While it tries to do so, it'll check each memory location, and if its reference count is zero,
-        it'll remove that node and then decrement the reference counts of each pointer in that node.
         If the list is ever finished without having found memory, the runtime will elongate that or crash.
-        (If I use this one, I also need to add a reference number to each data structure and decrement envs
-        when I return funcs)
+        When the program calls "DUMP 0x123", the list deallocates the memory block starting at 0x123.
+        On my end, when a function returns, it must have its env's reference count diminished. When that reaches
+        zero, it'll be deleted, and have its own pointers' referene counts diminished, and in turn they'll be
+        checked.
+
+Assembly commands:
+        NEW PTR INT -- writes a pointer to INT newly-allocated blocks of memory into PTR
+        DUMP PTR -- deallocates the block at PTR
+        ADD PTR INT1 INT2 -- writes the sum of the two INTs to PTR
+        SUB, MUL, DIV, MOD -- same
+        SET PTR INT -- sets the value at PTR to INT
+        COND PTR LABEL -- if PTR is 0, jump to label
+        JUMP LABEL -- move pc to label
+        LABEL INT -- label this place
+        
+Symbol tables are passed by copy.

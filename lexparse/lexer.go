@@ -3,7 +3,7 @@ package lexparse
 
 import "regexp"
 
-//import "fmt"
+// import "fmt"
 
 /* Current functionality:
    Will turn a series of lisp pieces into
@@ -31,6 +31,7 @@ const (
 	LitInt
 	LitFloat
 	LitChar
+        LitStr
 	openParen
 	closeParen
 )
@@ -44,12 +45,15 @@ func Lex(code string) []primitive {
 	rLitInt := regexp.MustCompile(`^\d+$`)
 	rLitFloat := regexp.MustCompile(`^\d*\.\d+$`)
 	rLitChar := regexp.MustCompile(`^#\\(?:(?:\\.)|[!-'*-+--\[\]-~])+$`)
+        rLitStr := regexp.MustCompile(`^"(?:(?:\\.)|[^\\"])*"`)
 	rWord := regexp.MustCompile(`^(?:(?:\\.)|[!-'*-+--\[\]-~])+`)
 	// word matches anything except ( ,)\
 	// and accepts escapes
 
 	prims := make([]primitive, 0)
 	for {
+                //fmt.Println(code)
+                //fmt.Println(prims)
 		var a, b string
 		a, b = grab(rWhitespace, code)
 		if len(a) != 0 {
@@ -71,6 +75,7 @@ func Lex(code string) []primitive {
 			prims = append(prims, primitive{closeParen, ""})
 			continue
 		}
+                /*
 		a, b = grab(rLitInt, code)
 		if len(a) != 0 {
 			//fmt.Println("d")
@@ -90,25 +95,21 @@ func Lex(code string) []primitive {
 			//fmt.Println("f")
 			code = b
 			a = a[2:]
-			// The below block handles the escape character
-			// The regex matches, it, this bit removes it
-			c := make([]rune, 0)
-			for i := 0; i < len(a); i++ {
-				if a[i] == '\\' {
-					if i < len(a)-1 {
-						c = append(c, rune(a[i+1]))
-						i++
-					}
-				} else {
-					c = append(c, rune(a[i]))
-				}
-			}
-			prims = append(prims, primitive{LitChar, string(c)})
+			prims = append(prims, primitive{LitChar, removeEscape(a)})
 			continue
 		}
+                */
+                a, b = grab(rLitStr, code)
+                if len(a) != 0 {
+                        //fmt.Println("g")
+                        code = b
+                        a = a[1:len(a)-1]
+                        prims = append(prims, primitive{LitStr, removeEscape(a)})
+                        continue
+                }
 		a, b = grab(rWord, code)
 		if len(a) != 0 {
-			//fmt.Println("g")
+			//fmt.Println("h")
 			code = b
 			if rLitInt.MatchString(a) {
 				prims = append(prims, primitive{LitInt, a})
@@ -118,39 +119,32 @@ func Lex(code string) []primitive {
 				continue
 			} else if rLitChar.MatchString(a) {
 				a = a[2:]
-				c := make([]rune, 0)
-				for i := 0; i < len(a); i++ {
-					if a[i] == '\\' {
-						if i < len(a)-1 {
-							c = append(c, rune(a[i+1]))
-							i++
-						}
-					} else {
-						c = append(c, rune(a[i]))
-					}
-				}
-				prims = append(prims, primitive{LitChar, a})
+				prims = append(prims, primitive{LitChar, removeEscape(a)})
 				continue
-			}
-			// The below block handles the escape character
-			// The regex matches, it, this bit removes it
-			c := make([]rune, 0)
-			for i := 0; i < len(a); i++ {
-				if a[i] == '\\' {
-					if i < len(a)-1 {
-						c = append(c, rune(a[i+1]))
-						i++
-					}
-				} else {
-					c = append(c, rune(a[i]))
-				}
-			}
-			prims = append(prims, primitive{Symbol, string(c)})
-			continue
+                        } else {
+                                prims = append(prims, primitive{Symbol, removeEscape(a)})
+                                continue
+                        }
 		}
 		break
 	}
 	return prims
+}
+
+// Removes \ before characters
+func removeEscape(a string) string {
+        c := make([]rune, 0)
+        for i := 0; i < len(a); i++ {
+                if a[i] == '\\' {
+                        if i < len(a)-1 {
+                                c = append(c, rune(a[i+1]))
+                                i++
+                        }
+                } else {
+                        c = append(c, rune(a[i]))
+                }
+        }
+        return string(c)
 }
 
 // Returns the first match and the rest of the string
