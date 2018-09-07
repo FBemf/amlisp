@@ -49,3 +49,55 @@ is allocated, and decremented every time a pointer to it goes out of scope. The 
 of allocated memory, and every time memory is allocated, the link-list is searched for an open space
 large enough for the new thing. When the link-list is queried, every entry has its reference number checked
 in order to check to see if the number of references is zero. If it is, that link is removed from the list.
+
+Formal definitions of functions:
+        quote2: Takes one argument--returns the id of the symbol it's given, if it's given a symbol. Otherwise,
+                returns the thing it's given. Not to be confused with the quote macro, which is recursuve quoting
+                inside a proper lsit if applied to an instruction list and which is quote2 otherwise.
+        math: take two numbers and returns a number
+        cons: Evaluates arguments and returns a reference to an allocated cons structure holding references
+                to the results of the arguments.
+        car, cdr: returns a ref to an arg of a cons given a ref to a cons.
+        empty: a ref to zero
+        if: takes three values. If the first one evaluates to something truthy, evaluates the second one and
+                returns it. Otherwise, does that to the third.
+        define2: Sets a new var in the stack frame to be a pointer to something. Regular define is macro'd to 
+                (define2 (do ...)), and do is ((func empty ...)). Let is similar.
+        vector: Allocates an amount of memory and fills it with things given here. Returns a reference to that.
+        func: At compile time, code in here is processed and saved to a new block of code that is later appended
+                to this code, after this one returns. Func becomes an instruction with a pc pointer to that func
+                code. When the instruction the func statement turns into is evaluated, it becomes a special
+                func struture with a pc pointer and an env pointer that points to the env in which it was
+                created. When a ref to that structure is used as a function, it takes an ll of arguments and
+                creates a new env to run in and jumps the pc, storing the old pc in the env to return to.
+
+Executing a function:
+        1. Requires: Either the symbol of a builtin or a symbol pointing to a func struct, a freshly allocated
+                env, and the arguments punched into that env. The env is large enough for the args + every 
+                variable "defined" in the top structure of the block + the value of the pc + somewhere to 
+                write the return value.
+        2. Args are evaluted. Store the pc in the new env and jump into the func. Execute the func, and when
+                done, write the return value in the appropriate spot and jump back.
+
+A reference number is incremented when a pointer value is defined (set?) to point at the thing.
+A reference number is decremented (by the runtime) when an env, list, or vector containing a pointer 
+        to the thing is removed from the reference list, or (by the code) when it is an env and its function
+        returns.
+This then means that the reference list must, upon popping a node, go into the memory array and scan the memory
+        area for pointers, and decrement those locations.
+
+This leads to a convenient rule: Structures containing pointers can only contain pointers.
+If we take this rule, it might be easier just to do tracing.
+If we do, it goes like this:
+        When program wants to allocate, it calls "NEW 7" for a new memory slot 7 long.
+        The runtime has a list of used memory zones, and it'll find a gap long enough and assign it.
+        If it can't, it'll trace through the memory from the top env to find used memory, and make a new list.
+        Then, if it still can't find memory, it'll elongate the memory space or crash.
+Versus:
+        When program wants to allocate, it calls "NEW 7" for a new memory slot 7 long.
+        The compiler has a list of used memory zones, and it'll find a gap long enough and assign it.
+        While it tries to do so, it'll check each memory location, and if its reference count is zero,
+        it'll remove that node and then decrement the reference counts of each pointer in that node.
+        If the list is ever finished without having found memory, the runtime will elongate that or crash.
+        (If I use this one, I also need to add a reference number to each data structure and decrement envs
+        when I return funcs)
