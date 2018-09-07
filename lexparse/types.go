@@ -1,9 +1,36 @@
 package lexparse
 
+// TODO: Make Node() and Primitive() return nil on nils so you can chain
+
 type Ast interface {
 	Node() *node
 	Primitive() *primitive
 }
+
+// The basic components of an amlisp program after
+// all the reader macros have run.
+type primitive struct {
+	kind    int
+	content string
+}
+
+func (p primitive) Type() int {
+	return p.kind
+}
+
+func (p primitive) Value() string {
+	return p.content
+}
+
+const (
+	Symbol = iota
+	LitInt
+	LitFloat
+	LitChar
+	LitStr
+	openParen
+	closeParen
+)
 
 type errorString struct {
 	s string

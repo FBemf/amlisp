@@ -72,6 +72,10 @@ Formal definitions of functions:
                 creates a new env to run in and jumps the pc, storing the old pc in the env to return to.
         cons?, empty?, vector?, int?, float?, char?, symbol?: Return bool by type.
 
+        All the above are builtin funcs written straight in assembly. There are a few builtin funcs
+        that the user can't execute, like decrementRef, which recursively decrements refs and deallocates memory.
+        I don't have any others yet.
+
 Executing a function:
         1. Requires: Either the symbol of a builtin or a symbol pointing to a func struct, a freshly allocated
                 env, and the arguments punched into that env. The env is large enough for the args + every 
@@ -112,5 +116,6 @@ Assembly commands:
         COND PTR LABEL -- if PTR is 0, jump to label
         JUMP LABEL -- move pc to label
         LABEL INT -- label this place
+        CALL LABEL PTR -- calls the func at label with env at PTR
         
 Symbol tables are passed by copy.

@@ -7,34 +7,8 @@ import "regexp"
 
 /* Current functionality:
    Will turn a series of lisp pieces into
-   a series of tokens. Will not attempt to evaluate
-   their legitimacy or types.
+   a series of tokens.
 */
-
-// The basic components of an amlisp program after
-// all the reader macros have run.
-type primitive struct {
-	kind    int
-	content string
-}
-
-func (p primitive) Type() int {
-	return p.kind
-}
-
-func (p primitive) Value() string {
-	return p.content
-}
-
-const (
-	Symbol = iota
-	LitInt
-	LitFloat
-	LitChar
-	LitStr
-	openParen
-	closeParen
-)
 
 // Turns code into a list of primitives
 func Lex(code string) []primitive {
