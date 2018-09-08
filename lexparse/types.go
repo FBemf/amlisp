@@ -1,7 +1,5 @@
 package lexparse
 
-// TODO: Make Node() and Primitive() return nil on nils so you can chain
-
 type Ast interface {
 	Node() *node
 	Primitive() *primitive

@@ -112,10 +112,12 @@ Assembly commands:
         DUMP PTR -- deallocates the block at PTR
         ADD PTR INT1 INT2 -- writes the sum of the two INTs to PTR
         SUB, MUL, DIV, MOD -- same
-        SET PTR INT -- sets the value at PTR to INT
+        SET PTR offset INT -- sets the value at PTR+offset to INT
         COND PTR LABEL -- if PTR is 0, jump to label
         JUMP LABEL -- move pc to label
         LABEL INT -- label this place
         CALL LABEL PTR -- calls the func at label with env at PTR
+        NEWP, SETP PTRPTR INT ... -- sets or news at the location described at the
+                location PTRPTR
         
 Symbol tables are passed by copy.
