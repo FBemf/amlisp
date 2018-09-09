@@ -12,16 +12,25 @@ type primitive struct {
 	content string
 }
 
-func (p primitive) Type() int {
-	return p.kind
+func (p *primitive) Type() int {
+        if p != nil {
+	        return p.kind
+        } else {
+                return NilType
+        }
 }
 
-func (p primitive) Value() string {
-	return p.content
+func (p *primitive) Value() string {
+	if p != nil {
+                return p.content
+        } else {
+                return ""
+        }
 }
 
 const (
-	Symbol = iota
+        NilType = iota
+	Symbol
 	LitInt
 	LitFloat
 	LitChar

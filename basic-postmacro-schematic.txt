@@ -112,7 +112,15 @@ Assembly commands:
         DUMP PTR -- deallocates the block at PTR
         ADD PTR INT1 INT2 -- writes the sum of the two INTs to PTR
         SUB, MUL, DIV, MOD -- same
-        SET PTR offset INT -- sets the value at PTR+offset to INT
+
+        Notation: M is memory cell with the index m. [M] is the memory cell with the
+        index of the contents of memory cell M.
+
+        SET PTR INT -- sets cell PTR to INT
+        SETI PTR OFF INT -- sets cell [PTR]+OFF to INT (set indirectly)
+        SETD PTR1 PTR2 OFF -- sets cell PTR1 to [PTR2]+OFF (set to dereferenced)
+        SETID PTR1 OFF PTR2 -- sets cell [PTR1]+OFF to [PTR2]
+
         COND PTR LABEL -- if PTR is 0, jump to label
         JUMP LABEL -- move pc to label
         LABEL INT -- label this place

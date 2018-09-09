@@ -1,7 +1,10 @@
 // The one that makes the code from the tree.
 package codegen
 
-import "lexparse"
+import (
+        "lexparse"
+        "strconv"
+)
 import "fmt"
 
 func CodeGen(ast lexparse.Ast) {
@@ -23,31 +26,6 @@ const masterSym map[string]int = map[string]int{
 }
 
 func call(up chan assembly, ast lexparse.Ast, sym map[string]int) {
-        /*
-                Requirements:
-                Get a function location
-                Get a parent env
-                Make your own env
-                Store the pc
-                Hop the pc
-                Go nuts
-        */
-        /*
-                Model Environment:
-                refcount
-                typeconst
-                oldpc
-                length
-                pointers
-                ...
-        /*
-        /*
-                Model other type in memory:
-                refcount
-                typeconst
-                values
-                ...
-        */
 
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
@@ -55,7 +33,7 @@ func call(up chan assembly, ast lexparse.Ast, sym map[string]int) {
                                 up <- assembly{"NEW", r0, 3, 0}
                                 up <- assembly{"SET", r0, 0, 1} // refcount
                                 up <- assembly{"SET", r0, 1, Type_integer} // type
-                                up <- assembly{"SET", r0, 2, p.Value()} // val
+                                up <- assembly{"SET", r0, 2, strconv.Atoi(p.Value())} // val
                         default:
                                 fmt.Println("Unexpected primitive type!")
                         // TODO: add support for other primitives
@@ -73,29 +51,25 @@ func call(up chan assembly, ast lexparse.Ast, sym map[string]int) {
         // Make an env for it
         // an env has refcount, type, length, saved pc, return loc, parent env, pointers
 
-        // NEW takes an address arg1, and an int arg2.
-        // The loc pointed to by arg1 is a pointer to another location, which is
-        // set to be a pointer to a newly-allocated block of memory arg2 locations long.
-        up <- assembly{"NEW", r0, members, 0}
-
-        // SET takes the location pointed to by the memory loc arg1, adds arg2 to it,
-        // and sets it to arg3
-        up <- assembly{"SET", r0, 0, 1}
-        up <- assembly{"SET", r0, 1, Type_environment}
-        up <- assembly{"SET", r0, 2, members + 4}
-        // Skip this one for later
+        up <- assembly{"NEW", r2, members+6, 0}
+        up <- assembly{"SETID", r0, 0, r2}
+        up <- assembly{"SETI", r2, 0, 1}
+        up <- assembly{"SETI", r2, 1, Type_environment}
+        up <- assembly{"SETI", r2, 2, members + 4}
 
         // SETP is like SET, but arg3 is a loc holding the number you want to set it to.
-        up <- assembly{"SETP", r0, 4, r0}
-        up <- assembly{"SETP", r0, 5, r1}
+        up <- assembly{"SETID", r2, 4, r0}
+        up <- assembly{"SETID", r2, 5, r1}
         argCode := make([]chan assembly, members)
+        for m := 0; m < members; m++ {
+                argCode[m] = make(chan assembly, 100)
         for m := 0; m < members; m++ {
                 ast = ast.Node().Next()
                 go call(argCode[m], ast.Node.This(), copySym(sym))
         }
         for m := 0; m < members; m++ {
-                up <- assembly{"SETDP", r1, // set r1 to 
-                up <- assembly{
+                up <- assembly{"SETD", r0, r2, 6+m}
+                up <- assembly{"SETD", r1, r2, 0}
                 for {
                         if a, b := <-argCode[m]; b {
                                 up <- a
@@ -105,10 +79,22 @@ func call(up chan assembly, ast lexparse.Ast, sym map[string]int) {
                 }
         }
 
+        //up <- assembly{"REMEMBER-JUMP", r2, 3, sym[whatever]} // saves pc+1 to [r2]+3
+        // TODO: work out how we're going to handle the symbol table
+        // We may have to make it a data structure
 
-        // Either set each arg from a raw or go callFunc it
-        // Set oldpc
-        // jump
+        // When we regain control, the return value is set
+        // decrement the refcount for this env
+        // if we hit zero, recursively do so for the pointers in this env
+
+        // This block of code ascends the registers to the previous environment
+        up <- assembly{"SETD", r2, r1, 0}
+        up <- assembly{"SETD", r1, r2, 5}
+        up <- assembly{"SETD", r1, r1, 0}
+        up <- assembly{"SETD", r0, r2, 4}
+        up <- assembly{"SETD", r0, r0, 0}
+
+        return
 }
 
 type assembly struct {
