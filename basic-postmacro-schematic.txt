@@ -120,6 +120,10 @@ Assembly commands:
         SETI PTR OFF INT -- sets cell [PTR]+OFF to INT (set indirectly)
         SETD PTR1 PTR2 OFF -- sets cell PTR1 to [PTR2]+OFF (set to dereferenced)
         SETID PTR1 OFF PTR2 -- sets cell [PTR1]+OFF to [PTR2]
+        DEREF PTR1 PTR2 -- sets cell PTR1 to [[PTR2]]
+        NB: for a while i was using SETD a b 0, SETD a a 0 instead of
+                going SETD a b 0, DEREF a a 0 (or better yet, DEREF a b 0).
+                Watch out for that, maybe swap up some of the setd a b, deref a a for deref a b
 
         COND PTR LABEL -- if PTR is 0, jump to label
         JUMP LABEL -- move pc to label

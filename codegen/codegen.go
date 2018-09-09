@@ -105,7 +105,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         up <- assembly{"SETID", r2, 4, r0}
         up <- assembly{"SETID", r2, 5, r1}
         up <- assembly{"SETD", r3, r1, 6}
-        up <- assembly{"SETD", r3, r3, 0}
+        up <- assembly{"DEREF", r3, r3, 0}
         up <- assembly{"SETID", r1, 6, r3}
         argCode := make([]chan assembly, members)
         for m := 0; m < members; m++ {
@@ -127,13 +127,13 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
 
         if isFunc {
                 up <- assembly{"SETD", r3, r2, members+6}
-                up <- assembly{"SETD", r3, r3, 0}
+                up <- assembly{"DEREF", r3, r3, 0}
                 up <- assembly{"SETID", r0, 0, r3}      // return
 
                 up <- assembly{"ADD1I", r3, 0, 0}       // add to refcount
 
                 up <- assembly{"SETD", r3, r2, 3}
-                up <- assembly{"SETD", r3, r3, 0}       // Grab the pc to return to
+                up <- assembly{"DEREF", r3, r3, 0}       // Grab the pc to return to
 
                 up <- assembly{"SUB1I", r2, 0, 0}       // decrement refcount
 
@@ -142,9 +142,9 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 // Ascend the registers to the previous environment
                 up <- assembly{"SETD", r2, r1, 0}
                 up <- assembly{"SETD", r1, r2, 5}
-                up <- assembly{"SETD", r1, r1, 0}
+                up <- assembly{"DEREF", r1, r1, 0}
                 up <- assembly{"SETD", r0, r2, 4}
-                up <- assembly{"SETD", r0, r0, 0}
+                up <- assembly{"DEREF", r0, r0, 0}
 
                 up <- assembly{"REMEMBERJUMP", DUMPFUNC, r5, 0}
                 // where dumpfunc is the address of our garbage collector
@@ -186,9 +186,9 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 // current environment
                 up <- assembly{"SETD", r2, r1, 0}
                 up <- assembly{"SETD", r1, r2, 5}
-                up <- assembly{"SETD", r1, r1, 0}
+                up <- assembly{"DEREF", r1, r1, 0}
                 up <- assembly{"SETD", r0, r2, 4}
-                up <- assembly{"SETD", r0, r0, 0}
+                up <- assembly{"DEREF", r0, r0, 0}
 
         } else {
                 up <- assembly{"SETD", r3, r2, 7}       // grab address with ptr to func sym
@@ -203,12 +203,16 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 end := counter()
                 up <- assembly{"LABEL", loop, 0, 0}
                 up <- assembly{"SETD", r5, r4, 1}
-                up <- assembly{"SETD", r5, r5, 0}
+                up <- assembly{"DEREF", r5, r5, 0}
                 up <- assembly{"JUMPLABELIFEQ", end, r3, r5} // leave the loop if the val of r3 == the val of r5
                 up <- assembly{"SETD", r4, r4, 3}
-                up <- assembly{"SETD", r4, r4, 0}       // else move on to next link in chain
+                up <- assembly{"DEREF", r4, r4, 0}       // else move on to next link in chain
                 up <- assembly{"JUMPLABEL", loop, 0, 0}
                 up <- assembly{"LABEL", end, 0, 0}
+
+                up <- assembly{"SETD", r4, r4, 2}
+                up <- assembly{"DEREF", r4, r4, 0}
+                //change macro: _/SET T"cwDEREFf,;;dbi0
 
                 for m := 1; m < members; m++ {
                         up <- assembly{"NEW", r4, 4, 0}
