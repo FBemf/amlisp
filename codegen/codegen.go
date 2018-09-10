@@ -202,6 +202,9 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 up <- assembly{"DEREF", r4, r4, 0}       // grab sym table
                 up <- assembly{"SETD", r6, r4, 0}       // grab sym table
 
+                up <- assembly{"REMEMBERJUMP", // jump to the function that finds a symbol from the sym table
+
+                      // This one'll do it -- put it elsewhere though
                 loop := counter()
                 end := counter()
                 up <- assembly{"LABEL", loop, 0, 0}
@@ -212,6 +215,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 up <- assembly{"DEREF", r4, r4, 0}       // else move on to next link in chain
                 up <- assembly{"JUMPLABEL", loop, 0, 0}
                 up <- assembly{"LABEL", end, 0, 0}
+                // TODO: MOVE THIS ^
 
                 up <- assembly{"SETD", r4, r4, 2}
                 up <- assembly{"DEREF", r4, r4, 0}      // grab closure
@@ -226,16 +230,12 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                         loop = counter()
                         end = counter()
                         up <- assembly{"LABEL", loop, 0, 0}
-                        // you now have a closure and a new symbol table cell.
-                        // iterate through the arguments in the closure in this loop
-                        // dereference them and set the ID in the symbol table cell to their IDs
+                        // you now have the closure and a new symbol table cell.
+                        // grab the appropriate symbol from the closure and set the ID in the symbol table cell to its IDs
                         // then set the location to the contents of the appropriate cell in your current env.
-                        // Then pop on a new symtab cell and continue until r7 == r3
-                        // when this is done, make sure to wrap parts of this up as a builtin functions
-                        // all your functions are going to need to resolve symbols anyway.
-                        // you might even need it in this function
+                        // Then plonk this onto the front of the symtab and continue until r7 == r3
 
-                // Inject args into env, descend registers, call closure
+                // Lastly, make the jump
                 //up <- assembly{"REMEMBER-JUMP", r2, 3, sym[whatever]} // saves pc+1 to [r2]+3
         }
 
