@@ -133,3 +133,18 @@ Assembly commands:
                 location PTRPTR
         
 Symbol tables are passed by copy.
+
+
+I'm going to revise my SET commands.
+        SET is becoming SET-LITERAL
+        SETD is becoming COPY-ADD
+        SETI is becoming SET-INDEXED
+        SETID is becoming COPY-INDEXED
+        DEREF stays
+
+SO:
+        SET-LITERAL R A sets the cell R to A
+        COPY-ADD R A N sets the cell R to [A]+N
+        SET-INDEXED R I A sets the cell [R]+I to A
+        COPY-INDEXED R I A sets the cell [R]+I to [A]
+        DEREF A B I sets the cell A to [[B]+I]
