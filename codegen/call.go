@@ -8,42 +8,6 @@ import (
 )
 import "fmt"
 
-func CodeGen(ast lexparse.Ast) {
-        fmt.Print("")
-}
-
-// Symbol table of builtin funcs
-const builtins map[string]string = map[string]string{
-        "quote": "internalQuote",
-        "+": "+",
-        "-": "-",
-        "cons": "cons",
-        "car": "car",
-        "cdr": "cdr",
-        "empty": "empty",
-        "if": "if",
-        "define": "define",
-        "FUNCTION": "func"
-}
-
-type safeSym struct {
-        table map[string]int
-        mutex sync.Mutex
-}
-
-func (sym *safeSym) getSymID(name string, counter func() int) (r int) {
-        sym.mutex.Lock()
-        if id, ok := sym.table[name]; ok {
-                r = id
-        } else {
-                r = counter()
-                sym.table[name] = r
-        }
-        sym.mutex.Unlock()
-        return
-}
-
-
 func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) {
 
         if p := ast.Primitive(); p != nil {
@@ -59,6 +23,8 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                                 up <- assembly{"SET-INDEXED", r0, 1, Type_symbol} // type
                                 name := strconv.Atoi(p.Value())
                                 up <- assembly{"SET-LITERAL", r0, 2, sym.getSymID(name, counter))} // val
+                                // TODO: automatically resolve symbol literals
+                                // TODO: add keyword support for symbol-quote
                         default:
                                 fmt.Println("Unexpected primitive type!")
                         // TODO: add support for other primitives
@@ -105,12 +71,12 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         // an env has refcount, type, length, saved pc, return loc, parent env, symbol table, pointers
 
         up <- assembly{"NEW", r2, members+7, 0}
-        up <- assembly{"COPY-INDEXED", r0, 0, r2}
+        up <- assembly{"COPY-INDEXED", r0, 0, r2} // Assumes r0 is return loc
         up <- assembly{"SET-INDEXED", r2, 0, 1}
         up <- assembly{"SET-INDEXED", r2, 1, Type_environment}
         up <- assembly{"SET-INDEXED", r2, 2, members+7}
         up <- assembly{"COPY-INDEXED", r2, 4, r0}
-        up <- assembly{"COPY-INDEXED", r2, 5, r1}
+        up <- assembly{"COPY-INDEXED", r2, 5, r1} // Assumes r1 is return env
         up <- assembly{"DEREF", r3, r1, 6}
         up <- assembly{"COPY-INDEXED", r1, 6, r3}
         argCode := make([]chan assembly, members)
@@ -166,6 +132,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                         - Fun fact: its own refcount starts at 0. When it moves to the
                           next dump struct, it sets its own refcount to -1
                 */
+
                 up <- assembly{"REMEMBER-JUMP-LABEL", DUMPFUNC, r5, 0}
                 // where dumpfunc is the address of our garbage collector
                 // lemme outline how it works here: if the refcount of the place dumpfunc
@@ -261,52 +228,10 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 // Lastly, make the jump
                 up <- assembly{"DEREF", r4, r4, 3}      // Grab jump location
                 up <- assebly{"COPY-ADD", r3, r2, 3}
+                // TODO: Set r0 to be the env, set r1 to be the return pc
                 up <- assembly{"REMEMBER-JUMP", r6, r3, 0} // saves next pc to [r3] and jumps to [r4]
+                // TODO: Recover & ascend registers?
         }
 
         return
 }
-
-type assembly struct {
-        command string
-        arg1 int
-        arg2 int
-        arg3 int
-}
-
-const (
-        Type_environment = iota
-        Type_cons
-        Type_vector
-        Type_integer
-        Type_symbol
-)
-
-const (
-        r1 = iota
-        r2
-        r3
-        r4
-        r5
-)
-
-func makeCounter(i int) func() int {
-        var mux = &sync.Mutex{}
-        return func() int {
-                mux.Lock()
-                o := i
-                i++
-                mux.Unlock()
-                return o
-        }
-}
-
-
-/*func copySym(sym map[string]int) (out map[string]int) {
-        out := make(map[string]int)
-        for j, k := range(sym) {
-                out[j] = k
-
-        }
-        return
-}*/

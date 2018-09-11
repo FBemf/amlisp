@@ -148,3 +148,12 @@ SO:
         SET-INDEXED R I A sets the cell [R]+I to A
         COPY-INDEXED R I A sets the cell [R]+I to [A]
         DEREF A B I sets the cell A to [[B]+I]
+
+
+function rules: What is the basic structure of an assembly function?
+        When a function is called, it can assume it has an environment, and r2 points to
+        it. r1 is the parent environment and r0 is the return location. Builtin functions
+        are handled by sticking them in the initial symbol table. The special function dumpfunc
+        doesn't need to work that way. It isn't called conventionally.  
+
+_J_80lBEa
