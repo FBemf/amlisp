@@ -8,7 +8,7 @@ import (
 
 // Symbol table of builtin funcs
 const builtins map[string]string = map[string]string{
-        "quote": "internalQuote",
+        "SYMBOL-QUOTE": "internal-quote",
         "+": "+",
         "-": "-",
         "cons": "cons",

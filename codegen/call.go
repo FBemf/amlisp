@@ -8,7 +8,7 @@ import (
 )
 import "fmt"
 
-func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) {
+func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, bool quoted) {
 
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
@@ -19,23 +19,36 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                                 up <- assembly{"SET-INDEXED", r3, 2, strconv.Atoi(p.Value())} // val
                                 up <- assembly{"SET-INDEXED", r0, 0, r3}        // return
                         case lexparse.Symbol:
-                                up <- assembly{"NEW", r3, 3, 0}
-                                up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
-                                up <- assembly{"SET-INDEXED", r3, 1, Type_symbol} // type
-                                name := strconv.Atoi(p.Value())
-                                up <- assembly{"SET-LITERAL", r3, 2, sym.getSymID(name, counter))} // val
-                                // dereferencing func start -- none of this block makes sense
-                                loop := counter()
-                                end := counter()
-                                up <- assembly{"LABEL", loop, 0, 0}
-                                up <- assembly{"DEREF", r5, r4, 1}
-                                up <- assembly{"JUMP-LABEL-IF-EQ", end, r3, r5} // leave the loop if the val of r3 == the val of r5
-                                up <- assembly{"DEREF", r4, r4, 4}       // else move on to next link in chain
-                                up <- assembly{"JUMP-LABEL", loop, 0, 0}
-                                // func end
+                                if quoted {
+                                        up <- assembly{"NEW", r3, 3, 0}
+                                        up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
+                                        up <- assembly{"SET-INDEXED", r3, 1, Type_symbol} // type
+                                        name := strconv.Atoi(p.Value())
+                                        up <- assembly{"SET-LITERAL", r3, 2, sym.getSymID(name, counter))} // val
+                                        up <- assembly{"COPY-INDEXED", r0, 0, r3}
+                                } else {
+                                        // dereferencing func start -- none of this block makes sense
+                                        // a symtab frame looks like
+                                        // [refcount] [type] [id] [loc] [next]
+                                        loop := counter()
+                                        end := counter()
+                                        up <- assembly{"SET-LITERAL", r3, sym.getSymID(name, counter)), 0}
+                                        up <- assembly{"DEREF", r4, r2, 6} // grab symtab - r4 = [[r2]+6]
+                                        up <- assembly{"LABEL", loop, 0, 0}
+                                        up <- assembly{"DEREF", r5, r4, 2} // grab id
+                                        up <- assembly{"JUMP-LABEL-IF-EQ", end, r5, r3} // leave the loop if the val of r5 == the val of r6
+                                        // TODO: Func does not break at end of symbol table.
+                                        // Error catching needed all through this program. 
+                                        // Let's get it to at least work on
+                                        // good code first.
 
-                                // TODO: automatically resolve symbol literals
-                                // TODO: add keyword support for symbol-quote
+                                        up <- assembly{"DEREF", r4, r4, 4}       // else move on to next link in chain
+                                        up <- assembly{"JUMP-LABEL", loop, 0, 0}
+                                        up <- assembly{"LABEL", end, 0, 0}
+
+                                        up <- assembly{"DEREF", r5, r4, 3}
+                                        up <- assembly{"COPY-INDEXED", r0, 0, r5} // return
+                                }
                         default:
                                 fmt.Println("Unexpected primitive type!")
                         // TODO: add support for other primitives
@@ -55,6 +68,8 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         if p := ast.Node().This().Primitive(); p.Type() == lexparse.Symbol {
                 if p.Value() == builtins["FUNCTION"] {
                         isFunc = true
+                } else if p.Value() == builtins["SYMBOL-QUOTE"] && !quoted {
+                        quoted = true
                 }
         }
 
@@ -95,7 +110,11 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         for m := 0; m < members; m++ {
                 argCode[m] = make(chan assembly, 100)
                 ast = ast.Node().Next()
-                go call(argCode[m], ast.Node().This(), counter, sym)
+                if !quoted || m == 0 {
+                        go call(argCode[m], ast.Node().This(), counter, sym, 0)
+                } else {
+                        go call(argCode[m], ast.Node().This(), counter, sym, 1)
+                }
         }
         for m := 0; m < members; m++ {
                 up <- assembly{"COPY-ADD", r0, r2, 7+m} // r0 = [r2] + 7+m
@@ -110,6 +129,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         }
 
         if isFunc {
+                /*
                 up <- assembly{"DEREF", r3, r2, members+6}      // r3 = [[r2] + members+6]
                 up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return
 
@@ -130,6 +150,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 up <- assembly{"SET-LITERAL", r5, r5, 0}        // replace this if I find
                                                                 // a better place to keep
                                                                 // the return loc
+                */
 
                 // TODO: This whole area needs to be reworked, preferably when I write dumpfunc
                 /* Anatomy of dumpfunc:
@@ -147,14 +168,17 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                           next dump struct, it sets its own refcount to -1
                 */
 
-                up <- assembly{"REMEMBER-JUMP-LABEL", DUMPFUNC, r5, 0}
+                //up <- assembly{"REMEMBER-JUMP-LABEL", DUMPFUNC, r5, 0}
                 // where dumpfunc is the address of our garbage collector
                 // lemme outline how it works here: if the refcount of the place dumpfunc
                 // was called is 0, it runs dumpfunc on all of that place's pointers, then
                 // reduces that refcount to -1. Then the memory table will deallocate it
                 // the next time it sees it.
 
-                up <- assembly{"JUMP", r3, 0, 0}      // jump back
+                //up <- assembly{"JUMP", r3, 0, 0}      // jump back
+
+                up <- assembly{"JUMP-LABEL", finishfunc, 0, 0}  // todo: define finishfunc properly
+
                 up <- assembly{"LABEL", funcEnd, 0, 0}  // end of part of func executed when it's called
 
                 // Where we land when we're defining the func
