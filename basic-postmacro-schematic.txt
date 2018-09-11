@@ -156,4 +156,7 @@ function rules: What is the basic structure of an assembly function?
         are handled by sticking them in the initial symbol table. The special function dumpfunc
         doesn't need to work that way. It isn't called conventionally.  
 
+        The actual assembly of a function can start assuming r0 and r1 are normal, and r2 is its own
+        env.
+
 _J_80lBEa

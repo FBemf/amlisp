@@ -13,22 +13,34 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
                         case lexparse.litInt:
-                                up <- assembly{"NEW", r0, 3, 0}
-                                up <- assembly{"SET-INDEXED", r0, 0, 1} // refcount
-                                up <- assembly{"SET-INDEXED", r0, 1, Type_integer} // type
-                                up <- assembly{"SET-INDEXED", r0, 2, strconv.Atoi(p.Value())} // val
+                                up <- assembly{"NEW", r3, 3, 0}
+                                up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
+                                up <- assembly{"SET-INDEXED", r3, 1, Type_integer} // type
+                                up <- assembly{"SET-INDEXED", r3, 2, strconv.Atoi(p.Value())} // val
+                                up <- assembly{"SET-INDEXED", r0, 0, r3}        // return
                         case lexparse.Symbol:
-                                up <- assembly{"NEW", r0, 3, 0}
-                                up <- assembly{"SET-INDEXED", r0, 0, 1} // refcount
-                                up <- assembly{"SET-INDEXED", r0, 1, Type_symbol} // type
+                                up <- assembly{"NEW", r3, 3, 0}
+                                up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
+                                up <- assembly{"SET-INDEXED", r3, 1, Type_symbol} // type
                                 name := strconv.Atoi(p.Value())
-                                up <- assembly{"SET-LITERAL", r0, 2, sym.getSymID(name, counter))} // val
+                                up <- assembly{"SET-LITERAL", r3, 2, sym.getSymID(name, counter))} // val
+                                // dereferencing func start -- none of this block makes sense
+                                loop := counter()
+                                end := counter()
+                                up <- assembly{"LABEL", loop, 0, 0}
+                                up <- assembly{"DEREF", r5, r4, 1}
+                                up <- assembly{"JUMP-LABEL-IF-EQ", end, r3, r5} // leave the loop if the val of r3 == the val of r5
+                                up <- assembly{"DEREF", r4, r4, 4}       // else move on to next link in chain
+                                up <- assembly{"JUMP-LABEL", loop, 0, 0}
+                                // func end
+
                                 // TODO: automatically resolve symbol literals
                                 // TODO: add keyword support for symbol-quote
                         default:
                                 fmt.Println("Unexpected primitive type!")
                         // TODO: add support for other primitives
                 }
+                return
         }
 
         /* FYI: A note on SET (where [A] is the value held in cell number A)
@@ -86,8 +98,8 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 go call(argCode[m], ast.Node().This(), counter, sym)
         }
         for m := 0; m < members; m++ {
-                up <- assembly{"COPY-ADD", r0, r2, 7+m}
-                up <- assembly{"COPY-ADD", r1, r2, 0}
+                up <- assembly{"COPY-ADD", r0, r2, 7+m} // r0 = [r2] + 7+m
+                up <- assembly{"COPY-ADD", r1, r2, 0}   // r1 = [r2] + 0
                 for {
                         if a, b := <-argCode[m]; b {
                                 up <- a
@@ -98,25 +110,27 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
         }
 
         if isFunc {
-                up <- assembly{"DEREF", r3, r2, members+6}
+                up <- assembly{"DEREF", r3, r2, members+6}      // r3 = [[r2] + members+6]
                 up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return
 
-                up <- assembly{"ADD1", r3, 0, 0}       // add to closure refcount ([r3]++)
+                up <- assembly{"ADD1", r3, 0, 0}       // add to the refcount of the returned value
 
                 up <- assembly{"DEREF", r3, r2, 3}       // Grab the pc to return to
 
                 up <- assembly{"SUB1", r2, 0, 0}       // decrement env refcount ([r2]--)
 
-                up <- assembly{"COPY-ADD", r4, r2, 0}       // the argument for dumpfunc
+                up <- assembly{"COPY-ADD", r4, r2, 0}       // argument for dumpfunc
 
                 // Ascend the registers to the previous environment
                 up <- assembly{"COPY-ADD", r2, r1, 0}
                 up <- assembly{"DEREF", r1, r2, 5}
                 up <- assembly{"DEREF", r0, r2, 4}
 
+                // START OF DUMPFUNC BS
                 up <- assembly{"SET-LITERAL", r5, r5, 0}        // replace this if I find
                                                                 // a better place to keep
                                                                 // the return loc
+
                 // TODO: This whole area needs to be reworked, preferably when I write dumpfunc
                 /* Anatomy of dumpfunc:
                         - Lives on its own linked data structure
@@ -141,8 +155,9 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 // the next time it sees it.
 
                 up <- assembly{"JUMP", r3, 0, 0}      // jump back
-                up <- assembly{"LABEL", funcEnd, 0, 0}
+                up <- assembly{"LABEL", funcEnd, 0, 0}  // end of part of func executed when it's called
 
+                // Where we land when we're defining the func
                 // Count number of args
                 args := 0
                 for t := argAst.Node(); t != nil; t = t.Next().Node() {
@@ -168,6 +183,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 }
 
                 up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return it
+                // Finished actual function action
 
                 // Ascend the registers to the previous environment
                 // BTW, rule of thumb for registers: r0 is where to write the return val,
@@ -178,6 +194,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 up <- assembly{"DEREF", r0, r2, 4}
 
         } else {
+                /*      // This block of code is unnecessary now
                 up <- assembly{"DEREF", r3, r2, 7}       // grab address of func sym
                 up <- assembly{"DEREF", r3, r3, 2}       // grab sym id
 
@@ -198,38 +215,41 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym) 
                 // TODO: MOVE THIS ^ ?
                 // Should encapsulate as a function and call it in the primitive discovery section above
 
-                up <- assembly{"DEREF", r4, r4, 2}      // grab closure
+                // Since I'm resolving symbols where I find them, I can get the closure much more concisely
+                //up <- assembly{"DEREF", r4, r4, 2}      // grab closure
+                */
+
+                up <- assembly{"DEREF", r4, r2, 7}      // grab closure
 
                 for m := 1; m < members; m++ {
                         up <- assembly{"NEW", r5, 5, 0}
                         up <- assembly{"SET-INDEXED", r5, 0, 1}
                         up <- assembly{"SET-INDEXED", r5, 1, Type_symtab}
-                        //loop = counter()
-                        //end = counter()
-                        //up <- assembly{"LABEL", loop, 0, 0}
                         // you now have the closure and a new symbol table cell.
 
-                        up <- assembly{"DEREF", r3, r4, 4+m} // Got the address of the symbol
-                        up <- assembly{"DEREF", r3, r3, 2} // Got the ID of the symbol
+                        // grab the ID of the relevant symbol
+                        up <- assembly{"DEREF", r3, r4, 4+m}    // r3 = [[r4] + 4+m]
+                        up <- assembly{"DEREF", r3, r3, 2}      // r3 = [[r3] + 2]
 
-                        // grab the appropriate symbol from the closure and set the ID in the symbol table cell to its IDs
-                        up <- assembly{"COPY-INDEXED", r5, 2, r3}
+                        // Set the ID in the symbol table cell to the ID
+                        up <- assembly{"COPY-INDEXED", r5, 2, r3}       // [r5] + 2 = [r3]
 
                         // then set the location to the contents of the appropriate cell in your current env.
-                        up <- assembly{"DEREF", r3, r2, 7+m}
-                        up <- assembly{"COPY-INDEXED", r5, 3, r3}
+                        up <- assembly{"DEREF", r3, r2, 7+m}    // r3 = [[r2] + 7+m]
+                        up <- assembly{"COPY-INDEXED", r5, 3, r3}       // [r5]+3 = [r3]
 
                         // Then plonk this onto the front of the symtab and continue
-                        up <- assembly{"DEREF", r3, r6, 0}
-                        up <- assembly{"COPY-INDEXED", r5, 4, r3}
-                        up <- assembly{"COPY-INDEXED", r6, 0, r5}
+                        // A symbol table cell is [ refcount, type, symbol id, value location, next cell ]
+                        up <- assembly{"DEREF", r3, r2, 6}      // r3 = [[r2]+6]
+                        up <- assembly{"COPY-INDEXED", r5, 4, r3}       // [r5]+4 = [r3]
+                        up <- assembly{"COPY-INDEXED", r2, 6, r5}       // [r2]+6 = [r5]
                 }
 
                 // Lastly, make the jump
                 up <- assembly{"DEREF", r4, r4, 3}      // Grab jump location
-                up <- assebly{"COPY-ADD", r3, r2, 3}
+                up <- assebly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
                 // TODO: Set r0 to be the env, set r1 to be the return pc
-                up <- assembly{"REMEMBER-JUMP", r6, r3, 0} // saves next pc to [r3] and jumps to [r4]
+                up <- assembly{"REMEMBER-JUMP", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
                 // TODO: Recover & ascend registers?
         }
 
