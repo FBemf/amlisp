@@ -129,55 +129,9 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         }
 
         if isFunc {
-                /*
-                up <- assembly{"DEREF", r3, r2, members+6}      // r3 = [[r2] + members+6]
+                up <- assembly{"DEREF", r3, r2, members+6}      // Grab return value
                 up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return
-
-                up <- assembly{"ADD1", r3, 0, 0}       // add to the refcount of the returned value
-
-                up <- assembly{"DEREF", r3, r2, 3}       // Grab the pc to return to
-
-                up <- assembly{"SUB1", r2, 0, 0}       // decrement env refcount ([r2]--)
-
-                up <- assembly{"COPY-ADD", r4, r2, 0}       // argument for dumpfunc
-
-                // Ascend the registers to the previous environment
-                up <- assembly{"COPY-ADD", r2, r1, 0}
-                up <- assembly{"DEREF", r1, r2, 5}
-                up <- assembly{"DEREF", r0, r2, 4}
-
-                // START OF DUMPFUNC BS
-                up <- assembly{"SET-LITERAL", r5, r5, 0}        // replace this if I find
-                                                                // a better place to keep
-                                                                // the return loc
-                */
-
-                // TODO: This whole area needs to be reworked, preferably when I write dumpfunc
-                /* Anatomy of dumpfunc:
-                        - Lives on its own linked data structure
-                        (refcount, type, current-target, next-dump-struct, return loc)
-                        - Sets refcount to -1
-                        - Switch on type to find if it's a pointer struct
-                        - If it is, exit
-                        - If it isn't, get the length of it
-                        - Decrement each pointer's data struct. If they're 0,
-                          create a new dump struct between this and the next one
-                        - Upon exit, move to next dump struct and continue. If nil,
-                          just return.
-                        - Fun fact: its own refcount starts at 0. When it moves to the
-                          next dump struct, it sets its own refcount to -1
-                */
-
-                //up <- assembly{"REMEMBER-JUMP-LABEL", DUMPFUNC, r5, 0}
-                // where dumpfunc is the address of our garbage collector
-                // lemme outline how it works here: if the refcount of the place dumpfunc
-                // was called is 0, it runs dumpfunc on all of that place's pointers, then
-                // reduces that refcount to -1. Then the memory table will deallocate it
-                // the next time it sees it.
-
-                //up <- assembly{"JUMP", r3, 0, 0}      // jump back
-
-                up <- assembly{"JUMP-LABEL", finishfunc, 0, 0}  // todo: define finishfunc properly
+                up <- assembly{"JUMP-LABEL", finishfunc, 0, 0}
 
                 up <- assembly{"LABEL", funcEnd, 0, 0}  // end of part of func executed when it's called
 
@@ -218,31 +172,6 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 up <- assembly{"DEREF", r0, r2, 4}
 
         } else {
-                /*      // This block of code is unnecessary now
-                up <- assembly{"DEREF", r3, r2, 7}       // grab address of func sym
-                up <- assembly{"DEREF", r3, r3, 2}       // grab sym id
-
-                up <- assembly{"COPY-ADD", r6, r2, 6}       // grab sym table location
-                up <- assembly{"DEREF", r4, r2, 6}       // grab sym table
-
-                up <- assembly{"REMEMBERJUMP", // jump to the function that finds a symbol from the sym table
-
-                // This one'll do it -- put it elsewhere though
-                loop := counter()
-                end := counter()
-                up <- assembly{"LABEL", loop, 0, 0}
-                up <- assembly{"DEREF", r5, r4, 1}
-                up <- assembly{"JUMP-LABEL-IF-EQ", end, r3, r5} // leave the loop if the val of r3 == the val of r5
-                up <- assembly{"DEREF", r4, r4, 4}       // else move on to next link in chain
-                up <- assembly{"JUMP-LABEL", loop, 0, 0}
-                up <- assembly{"LABEL", end, 0, 0}
-                // TODO: MOVE THIS ^ ?
-                // Should encapsulate as a function and call it in the primitive discovery section above
-
-                // Since I'm resolving symbols where I find them, I can get the closure much more concisely
-                //up <- assembly{"DEREF", r4, r4, 2}      // grab closure
-                */
-
                 up <- assembly{"DEREF", r4, r2, 7}      // grab closure
 
                 for m := 1; m < members; m++ {
@@ -272,9 +201,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 // Lastly, make the jump
                 up <- assembly{"DEREF", r4, r4, 3}      // Grab jump location
                 up <- assebly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
-                // TODO: Set r0 to be the env, set r1 to be the return pc
                 up <- assembly{"REMEMBER-JUMP", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
-                // TODO: Recover & ascend registers?
         }
 
         return

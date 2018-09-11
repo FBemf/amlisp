@@ -4,27 +4,12 @@ func defaultFuncs(up chan assembly, counter func() int) {
 
         // basic outline of a builtin func:
         // at start, r0, r1, r2 are all as normal.
-        // at end, are expected to:
-        //      a) return value to [r0]
-        //      b) add to the refcount of the struct being returned
-        //      c) decrement its own
-        //      d) ascend its r0, r1, r2 registers to the parent env
-        //      d) set off dumpfunc
-        //      e) jump back to the old pc
-        // All this is enclosed in a big JUMP statement
-        // After the jump statement, we make a closure for ourselves and
-        // stick that in the symbol table
+        // at end, are expected to: return return value
+        // and call finishfunc.
+        // ^ That's all enclosed in a jump--after that, there's
+        // code creating a closure that points to the function
 
-        // All of this is so similar to what "func" already does
-        // consider turning func to some extent into a builtin func
-        // instead of just a flag
-
-        // Template:
-        up <- assembly{"DEREF", r3, r2, members+6}      // Grab return value -- not generic
-        up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return
-        up <- assembly{"JUMP-LABEL", finishfunc, 0, 0}
-
-        // Finish func boilerplate
+        // Finish func
         up <- assembly{"LABEL", finishfunc, 0, 0}
         up <- assembly{"DEREF", r3, r0, 0}      // Grab return value -- not generic
         up <- assembly{"ADD1", r3, 0, 0}       // add to the refcount of the returned value
