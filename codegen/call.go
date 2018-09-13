@@ -101,7 +101,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         up <- assembly{"COPY-INDEXED", r0, 0, r2} // Assumes r0 is return loc
         up <- assembly{"SET-INDEXED", r2, 0, 1}
         up <- assembly{"SET-INDEXED", r2, 1, Type_environment}
-        up <- assembly{"SET-INDEXED", r2, 2, members+7}
+        up <- assembly{"SET-INDEXED", r2, 2, members}
         up <- assembly{"COPY-INDEXED", r2, 4, r0}
         up <- assembly{"COPY-INDEXED", r2, 5, r1} // Assumes r1 is return env
         up <- assembly{"DEREF", r3, r1, 6}
@@ -151,7 +151,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 up <- assembly{"SET-INDEXED", r3, 1, Type_closure}
                 up <- assembly{"SET-INDEXED", r3, 2, funcStart}
                 up <- assembly{"COPY-INDEXED", r3, 3, r2}
-                up <- assembly{"COPY-INDEXED", r3, 4, args+5}
+                up <- assembly{"COPY-INDEXED", r3, 4, args}
                 for i := 0; i < args; i++ {
                         up <- assembly{"NEW", r4, 3, 0}
                         up <- assembly{"SET-INDEXED", r4, 0, 1}
@@ -201,7 +201,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 // Lastly, make the jump
                 up <- assembly{"DEREF", r4, r4, 3}      // Grab jump location
                 up <- assebly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
-                up <- assembly{"REMEMBER-JUMP", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
+                up <- assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
         }
 
         return
