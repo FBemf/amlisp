@@ -32,11 +32,11 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                         // [refcount] [type] [id] [loc] [next]
                                         loop := counter()
                                         end := counter()
-                                        up <- assembly{"SET-LITERAL", r3, sym.getSymID(name, counter)), 0}
                                         up <- assembly{"DEREF", r4, r2, 6} // grab symtab - r4 = [[r2]+6]
                                         up <- assembly{"LABEL", loop, 0, 0}
-                                        up <- assembly{"DEREF", r5, r4, 2} // grab id
-                                        up <- assembly{"JUMP-LABEL-IF-EQ", end, r5, r3} // leave the loop if the val of r5 == the val of r6
+                                        up <- assembly{"DEREF", r3, r4, 2} // grab id
+                                        // leave the loop if the val of r5 == the val of r3
+                                        up <- assembly{"JUMP-LABEL-IF-IS", end, r3, sym.getSymID(name, counter))}
                                         // TODO: Func does not break at end of symbol table.
                                         // Error catching needed all through this program. 
                                         // Let's get it to at least work on
