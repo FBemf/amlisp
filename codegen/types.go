@@ -1,7 +1,7 @@
 package codegen
 
 import (
-        "lexparse"
+        "./lexparse"
         "strconv"
         "sync"
 )
@@ -42,6 +42,11 @@ type assembly struct {
         arg1 int
         arg2 int
         arg3 int
+}
+
+import "fmt"
+func Disassemble(a assembly) string {
+        return fmt.Sprintf("%s %d %d %d", a.command, a.arg1, a.arg2, a.arg3)
 }
 
 const (

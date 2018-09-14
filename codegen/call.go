@@ -2,13 +2,13 @@
 package codegen
 
 import (
-        "lexparse"
+        "./lexparse"
         "strconv"
         "sync"
 )
 import "fmt"
 
-func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, bool quoted) {
+func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym, bool quoted) {
 
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
@@ -116,15 +116,11 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                         go call(argCode[m], ast.Node().This(), counter, sym, 1)
                 }
         }
-        for m := 0; m < members; m++ {
+        for m, c := range argCode {
                 up <- assembly{"COPY-ADD", r0, r2, 7+m} // r0 = [r2] + 7+m
                 up <- assembly{"COPY-ADD", r1, r2, 0}   // r1 = [r2] + 0
-                for {
-                        if a, b := <-argCode[m]; b {
-                                up <- a
-                        } else {
-                                break
-                        }
+                for a, b := <-c; b; a, b := <-c {
+                        up <- a
                 }
         }
 
