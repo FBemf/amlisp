@@ -7,11 +7,11 @@ import "fmt"
 
 func Parse(prims []primitive) (Ast, error) {
 	s := stack{} // stack of nodes to back up through tree structure
-	a := new(node)
+        var emptynode Ast = &empty{}
+	a := &node{emptynode, emptynode}
 	top := a
 
 	for _, p := range prims {
-                var emptynode Ast = &empty{}
 		switch p.kind { // Symbol, openParen, closeParen, LitInt, LitFloat, LitChar
 		case openParen:
 			s.push(a)
@@ -28,7 +28,8 @@ func Parse(prims []primitive) (Ast, error) {
 			a.right = &node{emptynode, emptynode}
 			a = a.right.(*node)
 		default:
-			a.left = &p
+                        newP := p
+			a.left = &newP
 			a.right = &node{emptynode, emptynode}
 			a = a.right.(*node)
 		}

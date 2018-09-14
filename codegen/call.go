@@ -8,6 +8,10 @@ import (
 )
 
 func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, quoted bool) {
+        if ast.IsEmpty() {
+                close(up)
+                return
+        }
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
                         case lexparse.LitInt:
@@ -48,9 +52,10 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                         up <- assembly{"COPY-INDEXED", r0, 0, r5} // return
                                 }
                         default:
-                                fmt.Println("Unexpected primitive type!")
+                                fmt.Printf("Unexpected primitive type %v\n", p.Type())
                         // TODO: add support for other primitives
                 }
+                close(up)
                 return
         }
 
@@ -89,7 +94,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         // Count members of s-exp
         members := 0
         for t := ast; t.Node() != nil; t = t.Next() {
-                fmt.Println(lexparse.RPrint(t))
+                //fmt.Println(lexparse.RPrint(t))
                 if (t.This().IsEmpty() == false) {
                         members++
                 }
@@ -110,11 +115,11 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         argCode := make([]chan assembly, members)
         for m := 0; m < members; m++ {
                 argCode[m] = make(chan assembly, 100)
-                ast = ast.Node().Next()
+                ast = ast.Next()
                 if !quoted || m == 0 {
-                        go call(argCode[m], ast.Node().This(), counter, sym, false)
+                        go call(argCode[m], ast.This(), counter, sym, false)
                 } else {
-                        go call(argCode[m], ast.Node().This(), counter, sym, true)
+                        go call(argCode[m], ast.This(), counter, sym, true)
                 }
         }
         for m, c := range argCode {
@@ -200,6 +205,6 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 up <- assembly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
                 up <- assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
         }
-
+        close(up)
         return
 }

@@ -3,6 +3,7 @@ package codegen
 import (
         "../lexparse"
         "sync"
+        "fmt"
 )
 
 func GenAssembly(ast lexparse.Ast) []assembly {
@@ -29,15 +30,18 @@ func GenAssembly(ast lexparse.Ast) []assembly {
 
         // This compiles the ast
         uparr := make([]chan assembly, 0, 40)
-        for i := 0; ast.Node().This() != nil; i++ {
-                uparr = append(uparr, make(chan assembly))
-                go call(uparr[i], ast.Node().This(), counter, sym, false)
+        for i := 0; ast.This().Node() != nil; i++ {
+                uparr = append(uparr, make(chan assembly, 100))
+                go call(uparr[i], ast.This(), counter, sym, false)
+                ast = ast.Next()
         }
+        fmt.Println("hYE")
 
         // This unchannels all the compiled stuff
         for a, b := <-boilerplate; b; a, b = <-boilerplate {
                 code = append(code, a)
         }
+        fmt.Println("WOAH!")
         for _, c := range uparr {
                 for a, b := <-c; b; a, b = <-c {
                         code = append(code, a)

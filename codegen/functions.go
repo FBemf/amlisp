@@ -129,4 +129,6 @@ func defaultFuncs(up chan assembly, counter func() int, sym *safeSym) {
         up <- assembly{"JUMP-LABEL", dump_start, 0, 0}
         up <- assembly{"LABEL", dump_end, 0, 0}
         up <- assembly{"JUMP", r3, 0, 0}
+
+        close(up)
 }
