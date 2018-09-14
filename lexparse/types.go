@@ -21,6 +21,7 @@ type Ast interface {
 	Primitive() *primitive
         This() Ast
         Next() Ast
+        IsEmpty() bool
 }
 
 // The basic components of an amlisp program after
@@ -120,6 +121,10 @@ func (p *primitive) Next() Ast {
 	return &empty{}
 }
 
+func (p *primitive) IsEmpty() bool {
+        return false
+}
+
 func (n *node) Node() *node {
 	return n
 }
@@ -136,11 +141,15 @@ func (n *node) Next() Ast {
 	return n.right
 }
 
+func (n *node) IsEmpty() bool {
+        return false
+}
+
 func (e *empty) Node() *node {
         return nil
 }
 
-func (e *empty) Primitive() Ast {
+func (e *empty) Primitive() *primitive {
         return nil
 }
 
@@ -150,4 +159,8 @@ func (e *empty) This() Ast {
 
 func (e *empty) Next() Ast {
 	return e
+}
+
+func (e *empty) IsEmpty() bool {
+        return true
 }

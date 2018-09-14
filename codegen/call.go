@@ -63,7 +63,7 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         */
 
         var isFunc bool = false
-        if p := ast.Node().This().Primitive(); p.Type() == lexparse.Symbol {
+        if p := ast.This().Primitive(); (p != nil && p.Type() == lexparse.Symbol) {
                 if p.Value() == builtins["FUNCTION"] {
                         isFunc = true
                 } else if p.Value() == builtins["SYMBOL-QUOTE"] && !quoted {
@@ -81,20 +81,18 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 up <- assembly{"LABEL", funcStart, 0, 0}
 
                 // Also get rid of the arg list
-                ast = ast.Node().Next()
-                argAst = ast.Node().This()
-                ast = ast.Node().Next()
+                ast = ast.Next().Node()
+                argAst = ast.This().Node()
+                ast = ast.Next().Node()
         }
 
         // Count members of s-exp
         members := 0
-        fmt.Print("a")
-        for t := ast.Node(); t != nil; t = t.Next().Node() {
-                fmt.Print("b")
-                if t.This() != nil {
+        for t := ast; t.Node() != nil; t = t.Next() {
+                fmt.Println(lexparse.RPrint(t))
+                if (t.This().IsEmpty() == false) {
                         members++
                 }
-                fmt.Print("a")
         }
 
         // Make an env for it
@@ -137,8 +135,8 @@ func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 // Where we land when we're defining the func
                 // Count number of args
                 args := 0
-                for t := argAst.Node(); t != nil; t = t.Next().Node() {
-                        if t.This() != nil {
+                for t := argAst; t.Node() != nil; t = t.Next() {
+                        if t.This().IsEmpty() == false {
                                 args++
                         }
                 }
