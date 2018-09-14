@@ -4,11 +4,10 @@ package codegen
 import (
         "../lexparse"
         "strconv"
+        "fmt"
 )
-import "fmt"
 
 func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, quoted bool) {
-
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
                         case lexparse.LitInt:

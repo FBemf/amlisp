@@ -19,8 +19,8 @@ func Parse(prims []primitive) (Ast, error) {
 			if ok == false {
 				return nil, errorString{"Unexpected ')'"}
 			}
-			a.left = nil
-			a.right = nil
+			a.left = &empty{}
+			a.right = &empty{}
 			a = b
 			a.right = new(node)
 			a = a.right.(*node)
