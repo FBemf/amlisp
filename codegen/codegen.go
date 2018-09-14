@@ -35,13 +35,14 @@ func GenAssembly(ast lexparse.Ast) []assembly {
                 go call(uparr[i], ast.This(), counter, sym, false)
                 ast = ast.Next()
         }
-        fmt.Println("hYE")
 
         // This unchannels all the compiled stuff
         for a, b := <-boilerplate; b; a, b = <-boilerplate {
                 code = append(code, a)
         }
-        fmt.Println("WOAH!")
+
+        // TODO: Initialize r0 and r1 properly
+
         for _, c := range uparr {
                 for a, b := <-c; b; a, b = <-c {
                         code = append(code, a)
