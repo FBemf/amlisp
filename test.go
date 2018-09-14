@@ -2,6 +2,7 @@ package main
 
 import (
 	"./lexparse"
+        "./codegen"
 	"bufio"
 	"fmt"
 	"os"
@@ -17,6 +18,11 @@ func main() {
 		t, ok := lexparse.Parse(p)
 		fmt.Println(rPrint(t))
 		fmt.Println(ok)
+                fmt.Println("Compiling...")
+                code := codegen.GenAssembly(t)
+                for _, i := range code {
+                        fmt.Println(codegen.Disassemble(i))
+                }
 	}
 	return
 }

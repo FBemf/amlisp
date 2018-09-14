@@ -3,12 +3,6 @@ package lexparse
 // This one turns the token list into
 // an AST.
 
-// AST nodes
-type node struct {
-	left  Ast
-	right Ast
-}
-
 func Parse(prims []primitive) (Ast, error) {
 	s := stack{} // stack of nodes to back up through tree structure
 	a := new(node)

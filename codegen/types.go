@@ -1,29 +1,16 @@
 package codegen
 
 import (
-        "./lexparse"
-        "strconv"
         "sync"
+        "fmt"
 )
-
-// Symbol table of builtin funcs
-const builtins map[string]string = map[string]string{
-        "SYMBOL-QUOTE": "internal-quote",
-        "+": "+",
-        "-": "-",
-        "cons": "cons",
-        "car": "car",
-        "cdr": "cdr",
-        "empty": "empty",
-        "if": "if",
-        "define": "define",
-        "FUNCTION": "func"
-}
 
 type safeSym struct {
         table map[string]int
         mutex sync.Mutex
 }
+
+var builtins map[string]string
 
 func (sym *safeSym) getSymID(name string, counter func() int) (r int) {
         sym.mutex.Lock()
@@ -44,25 +31,32 @@ type assembly struct {
         arg3 int
 }
 
-import "fmt"
 func Disassemble(a assembly) string {
         return fmt.Sprintf("%s %d %d %d", a.command, a.arg1, a.arg2, a.arg3)
 }
 
 const (
         Type_environment = iota
+        Type_closure
+        Type_dump
+        Type_symtab
         Type_cons
         Type_vector
-        Type_integer
+        Type_int
         Type_symbol
 )
 
 const (
-        r1 = iota
+        r0 = iota
+        r1
         r2
         r3
         r4
         r5
+        r6
+        r7
+        r8
+        r9
 )
 
 func makeCounter(i int) func() int {

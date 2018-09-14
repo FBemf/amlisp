@@ -2,29 +2,28 @@
 package codegen
 
 import (
-        "./lexparse"
+        "../lexparse"
         "strconv"
-        "sync"
 )
 import "fmt"
 
-func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym, bool quoted) {
+func call(up chan assembly, ast lexparse.Ast, counter func() int, sym *safeSym, quoted bool) {
 
         if p := ast.Primitive(); p != nil {
                 switch p.Type() {
-                        case lexparse.litInt:
+                        case lexparse.LitInt:
                                 up <- assembly{"NEW", r3, 3, 0}
                                 up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
-                                up <- assembly{"SET-INDEXED", r3, 1, Type_integer} // type
-                                up <- assembly{"SET-INDEXED", r3, 2, strconv.Atoi(p.Value())} // val
+                                up <- assembly{"SET-INDEXED", r3, 1, Type_int} // type
+                                val, _ := strconv.Atoi(p.Value())
+                                up <- assembly{"SET-INDEXED", r3, 2, val} // val
                                 up <- assembly{"SET-INDEXED", r0, 0, r3}        // return
                         case lexparse.Symbol:
                                 if quoted {
                                         up <- assembly{"NEW", r3, 3, 0}
                                         up <- assembly{"SET-INDEXED", r3, 0, 1} // refcount
                                         up <- assembly{"SET-INDEXED", r3, 1, Type_symbol} // type
-                                        name := strconv.Atoi(p.Value())
-                                        up <- assembly{"SET-LITERAL", r3, 2, sym.getSymID(name, counter))} // val
+                                        up <- assembly{"SET-LITERAL", r3, 2, sym.getSymID(p.Value(), counter)} // val
                                         up <- assembly{"COPY-INDEXED", r0, 0, r3}
                                 } else {
                                         // dereferencing func start -- none of this block makes sense
@@ -36,7 +35,7 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
                                         up <- assembly{"LABEL", loop, 0, 0}
                                         up <- assembly{"DEREF", r3, r4, 2} // grab id
                                         // leave the loop if the val of r5 == the val of r3
-                                        up <- assembly{"JUMP-LABEL-IF-IS", end, r3, sym.getSymID(name, counter))}
+                                        up <- assembly{"JUMP-LABEL-IF-IS", end, r3, sym.getSymID(p.Value(), counter)}
                                         // TODO: Func does not break at end of symbol table.
                                         // Error catching needed all through this program. 
                                         // Let's get it to at least work on
@@ -74,24 +73,29 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
         }
 
         // If this is a function definition, defer execution
+        var funcStart, funcEnd int;
+        var argAst lexparse.Ast;
         if isFunc {
-                funcStart := counter()
-                funcEnd := counter()
+                funcStart = counter()
+                funcEnd = counter()
                 up <- assembly{"JUMPLABEL", funcEnd, 0, 0}
                 up <- assembly{"LABEL", funcStart, 0, 0}
 
                 // Also get rid of the arg list
                 ast = ast.Node().Next()
-                argAst := ast.Node().This()
+                argAst = ast.Node().This()
                 ast = ast.Node().Next()
         }
 
         // Count members of s-exp
         members := 0
+        fmt.Print("a")
         for t := ast.Node(); t != nil; t = t.Next().Node() {
+                fmt.Print("b")
                 if t.This() != nil {
                         members++
                 }
+                fmt.Print("a")
         }
 
         // Make an env for it
@@ -111,15 +115,15 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
                 argCode[m] = make(chan assembly, 100)
                 ast = ast.Node().Next()
                 if !quoted || m == 0 {
-                        go call(argCode[m], ast.Node().This(), counter, sym, 0)
+                        go call(argCode[m], ast.Node().This(), counter, sym, false)
                 } else {
-                        go call(argCode[m], ast.Node().This(), counter, sym, 1)
+                        go call(argCode[m], ast.Node().This(), counter, sym, true)
                 }
         }
         for m, c := range argCode {
                 up <- assembly{"COPY-ADD", r0, r2, 7+m} // r0 = [r2] + 7+m
                 up <- assembly{"COPY-ADD", r1, r2, 0}   // r1 = [r2] + 0
-                for a, b := <-c; b; a, b := <-c {
+                for a, b := <-c; b; a, b = <-c {
                         up <- a
                 }
         }
@@ -127,7 +131,7 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
         if isFunc {
                 up <- assembly{"DEREF", r3, r2, members+6}      // Grab return value
                 up <- assembly{"COPY-INDEXED", r0, 0, r3}      // return
-                up <- assembly{"JUMP-LABEL", finishfunc, 0, 0}
+                up <- assembly{"JUMP-LABEL", sym.getSymID(builtins["finishfunc"], counter), 0, 0}
 
                 up <- assembly{"LABEL", funcEnd, 0, 0}  // end of part of func executed when it's called
 
@@ -152,7 +156,7 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
                         up <- assembly{"NEW", r4, 3, 0}
                         up <- assembly{"SET-INDEXED", r4, 0, 1}
                         up <- assembly{"SET-INDEXED", r4, 1, Type_symbol}
-                        up <- assembly{"SET-INDEXED", r4, 2, getSymID(argAst.Node().This().Primitive().Value(), counter)}
+                        up <- assembly{"SET-INDEXED", r4, 2, sym.getSymID(argAst.Node().This().Primitive().Value(), counter)}
                         up <- assembly{"COPY-INDEXED", r3, 5+i, r4}
                 }
 
@@ -196,7 +200,7 @@ func call(up chan assembly, ast *lexparse.Ast, counter func() int, sym *safeSym,
 
                 // Lastly, make the jump
                 up <- assembly{"DEREF", r4, r4, 3}      // Grab jump location
-                up <- assebly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
+                up <- assembly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
                 up <- assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to [r3] and jumps to [r4]
         }
 

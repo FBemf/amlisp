@@ -1,6 +1,6 @@
 package codegen
 
-func defaultFuncs(up chan assembly, counter func() int) {
+func defaultFuncs(up chan assembly, counter func() int, sym *safeSym) {
 
         // basic outline of a builtin func:
         // at start, r0, r1, r2 are all as normal.
@@ -10,7 +10,7 @@ func defaultFuncs(up chan assembly, counter func() int) {
         // code creating a closure that points to the function
 
         // Finish func
-        up <- assembly{"LABEL", finishfunc, 0, 0}
+        up <- assembly{"LABEL", sym.getSymID(builtins["finishfunc"], counter), 0, 0}
         up <- assembly{"DEREF", r3, r0, 0}      // Grab return value -- not generic
         up <- assembly{"ADD1", r3, 0, 0}       // add to the refcount of the returned value
         up <- assembly{"SUB1", r2, 0, 0}       // decrement current env refcount ([r2]--)
@@ -70,8 +70,8 @@ func defaultFuncs(up chan assembly, counter func() int) {
         // TODO ... other types
 
         up <- assembly{"COPY-ADD", r5, r5, 1}
-        up <- assembly("JUMP-LABEL-IF-IS", switch_type_int, r5, Type_int}
-        up <- assembly("JUMP-LABEL-IF-IS", switch_type_env, r5, Type_environment}
+        up <- assembly{"JUMP-LABEL-IF-IS", switch_type_int, r5, Type_int}
+        up <- assembly{"JUMP-LABEL-IF-IS", switch_type_env, r5, Type_environment}
         // TODO ... other types
 
         up <- assembly{"LABEL", switch_type_int, 0, 0} // int
@@ -92,7 +92,7 @@ func defaultFuncs(up chan assembly, counter func() int) {
         up <- assembly{"LABEL", switch_end, 0, 0}
 
         // vi) top of loop 2
-        rec_loop = counter()
+        rec_loop := counter()
         up <- assembly{"LABEL", rec_loop, 0, 0}
 
         // vii) if at end, continue
