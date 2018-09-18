@@ -24,15 +24,15 @@ func (sym *safeSym) getSymID(name string, counter func() int) (r int) {
         return
 }
 
-type assembly struct {
-        command string
-        arg1 int
-        arg2 int
-        arg3 int
+type Assembly struct {
+        Command string
+        Arg1 int
+        Arg2 int
+        Arg3 int
 }
 
-func Disassemble(a assembly) string {
-        return fmt.Sprintf("%s %d %d %d", a.command, a.arg1, a.arg2, a.arg3)
+func Disassemble(a Assembly) string {
+        return fmt.Sprintf("%s %d %d %d", a.Command, a.Arg1, a.Arg2, a.Arg3)
 }
 
 const (
@@ -47,7 +47,7 @@ const (
 )
 
 const (
-        r0 = iota
+        r0 = iota + 2
         r1
         r2
         r3
