@@ -147,17 +147,9 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"SET-INDEXED", r3, 0, 1}
         up <- Assembly{"SET-INDEXED", r3, 1, Type_int}
 
-        loop := counter()
-        end := counter()
-        // TODO Get the args from the symbol table properly
-        // i) grab top stack frame
-        up <- Assembly{"LABEL", loop, 0, 0}
-        // ii) grab value of symbol
-        // iii) Exit if it matches
-        // iv) continue if it's not zero
-        // v ) Call a runtime error if it's zero
-        up <- Assembly{"EXCEPTION", Ex_undefined, 0, 0}
-        up <- Assembly{"LABEL", counter, 0, 0}
+        // grab args from symtab
+        querySymtab(up, r4, r5, r2, sym.getSymID(_add_arg_0, counter), counter)
+        querySymtab(up, r5, r6, r2, sym.getSymID(_add_arg_1, counter), counter)
 
         up <- Assembly{"DEREF", r4, r2, 8}   // first arg
         up <- Assembly{"DEREF", r5, r2, 9}   // second arg

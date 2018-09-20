@@ -61,7 +61,6 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                 }
                         default:
                                 fmt.Printf("Unexpected primitive type %v\n", p.Type())
-                        // TODO: add support for other primitives
                 }
                 close(up)
                 return
