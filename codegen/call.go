@@ -35,12 +35,17 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                         // a symtab frame looks like
                                         // [refcount] [type] [id] [loc] [next]
                                         up <- Assembly{"VARIABLE SYMBOL _f", 0, 0, 0}
+
+                                        querySymtab(up, r4, r3, r2, sym.getSymID(p.Value(), counter), counter)
+                                        up <- Assembly{"COPY-ADD", r0, r4, 0}
+
+                                        /*
                                         loop := counter()
                                         end := counter()
                                         up <- Assembly{"DEREF", r4, r2, 6} // grab symtab - r4 = [[r2]+6]
                                         up <- Assembly{"LABEL", loop, 0, 0}
                                         up <- Assembly{"DEREF", r3, r4, 2} // grab id
-                                        // leave the loop if the val of r5 == the val of r3
+                                        // leave the loop if the val of the symbol == the val of r3
                                         up <- Assembly{"JUMP-LABEL-IF-IS", end, r3, sym.getSymID(p.Value(), counter)}
                                         // TODO: Func does not break at end of symbol table.
                                         // TODO: some jump to avoid this normally
@@ -52,6 +57,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 
                                         up <- Assembly{"DEREF", r5, r4, 3}
                                         up <- Assembly{"COPY-INDEXED", r0, 0, r5} // return
+                                        */
                                 }
                         default:
                                 fmt.Printf("Unexpected primitive type %v\n", p.Type())
