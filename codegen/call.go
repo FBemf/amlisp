@@ -155,7 +155,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 }
 
                 // create and populate a closure to return
-                // contents of a closure: refcount, type, pc addr, env loc, length, args ...
+                // contents of a closure: refcount, type, pc addr, parent env loc, length, args ...
                 up <- Assembly{"NEW", r3, args+4, 0}
                 up <- Assembly{"SET-INDEXED", r3, 0, 1}
                 up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}

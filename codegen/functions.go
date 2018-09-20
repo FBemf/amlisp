@@ -139,13 +139,16 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"BOILERPLATE END _f", 0, 0, 0}
         up <- Assembly{"LABEL", endFinishFunc, 0, 0}
 
-        // add func
+        // '+' func
         endAddFunc := counter()
         up <- Assembly{"JUMP-LABEL", endAddFunc, 0, 0}
         up <- Assembly{"LABEL", sym.getSymID(builtins["add"], counter), 0, 0}
         up <- Assembly{"NEW", r3, 3, 0} // new int
         up <- Assembly{"SET-INDEXED", r3, 0, 1}
         up <- Assembly{"SET-INDEXED", r3, 1, Type_int}
+        loop := counter()
+        end := counter()
+        // Get the args from the symbol table properly
         up <- Assembly{"DEREF", r4, r2, 8}   // first arg
         up <- Assembly{"DEREF", r5, r2, 9}   // second arg
         up <- Assembly{"ADD", r4, r4, r5}       // new: [r4] = [r4] + [r5]
@@ -154,12 +157,12 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"LABEL", endAddFunc, 0, 0}
         // Create closure, add to symtab
-        up <- Assembly{"NEW", r3, args+4, 0}
+        up <- Assembly{"NEW", r3, 6, 0}
         up <- Assembly{"SET-INDEXED", r3, 0, 1}
         up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
-        up <- Assembly{"SET-INDEXED", r3, 2, funcStart}
+        up <- Assembly{"SET-LABEL-INDEXED", r3, 2, sym.getSymID(builtins["add"], counter)}      // sets a cell to be a label.
         up <- Assembly{"COPY-INDEXED", r3, 3, r2}
-        up <- Assembly{"COPY-INDEXED", r3, 4, args}
+        up <- Assembly{"COPY-INDEXED", r3, 4, 2}
         for i := 0; i < 2; i++ {
                 up <- Assembly{"NEW", r4, 3, 0}
                 up <- Assembly{"SET-INDEXED", r4, 0, 1}
