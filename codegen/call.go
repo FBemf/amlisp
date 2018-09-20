@@ -43,9 +43,8 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                         // leave the loop if the val of r5 == the val of r3
                                         up <- Assembly{"JUMP-LABEL-IF-IS", end, r3, sym.getSymID(p.Value(), counter)}
                                         // TODO: Func does not break at end of symbol table.
-                                        // Error catching needed all through this program. 
-                                        // Let's get it to at least work on
-                                        // good code first.
+                                        // TODO: some jump to avoid this normally
+                                        up <- Assembly{"EXCEPTION", Ex_undefined, 0, 0}
 
                                         up <- Assembly{"DEREF", r4, r4, 4}       // else move on to next link in chain
                                         up <- Assembly{"JUMP-LABEL", loop, 0, 0}

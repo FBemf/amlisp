@@ -47,6 +47,10 @@ const (
 )
 
 const (
+        Ex_undefined = iota
+)
+
+const (
         r0 = iota + 2
         r1
         r2
