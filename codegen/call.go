@@ -121,6 +121,9 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         up <- Assembly{"COPY-INDEXED", r2, 5, r1} // Assumes r1 is return env
         up <- Assembly{"DEREF", r3, r1, 6}
         up <- Assembly{"COPY-INDEXED", r2, 6, r3}       // grab symbol table
+        // TODO: make sure 1 is added to symtab's refcount
+
+
         argCode := make([]chan Assembly, members)
         up <- Assembly{"ARGS _f", 0, 0, 0}
         for m := 0; m < members; m++ {

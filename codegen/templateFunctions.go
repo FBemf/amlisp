@@ -10,7 +10,7 @@ func querySymtab(up chan Assembly, mem int, mem2 int, env int, target int, count
         bad := counter()
         up <- Assembly{"DEREF", mem, env, 6} // set mem to table
         up <- Assembly{"LABEL", loop, 0, 0}
-       // if symtab[2] points to x st x[2] == [target]
+        // if symtab[2] points to x st x[2] == [target]
         up <- Assembly{"DEREF", mem2, mem, 2}
         up <- Assembly{"COPY-ADD", mem2, mem2, 2}
         up <- Assembly{"JUMP-LABEL-IF-EQ", end, target, mem2}
@@ -22,3 +22,14 @@ func querySymtab(up chan Assembly, mem int, mem2 int, env int, target int, count
         up <- Assembly{"LABEL", end, 0, 0}
         up <- Assembly{"DEREF", mem, mem, 1}
 }
+
+// mem is an empty register
+// symframe is a register holding a pointer to the new frame
+// env is a register with a pointer to a frame
+func addToSymtab(up chan Assembly, mem int, symframe int, env int) {
+        up <- Assembly{"DEREF", mem, env, 6}
+        up <- Assembly{"COPY-INDEXED", symframe, 3, mem}
+        up <- Assembly{"COPY-INDEXED", env, 6, symframe}
+}
+
+func newData(up chan Assembly, mem int, dtype int, data int)

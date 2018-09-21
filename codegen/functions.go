@@ -44,7 +44,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         // Reminder: The dumpfunc ds looks like:
         //      [refcount] [type] [current ds] [next frame]
 
-        // Walking into this, r5 is the env to b dumped
+        // Walking into this, r5 is the env to be dumped
 
         // i) new data structure
         // ii) populate new data structure
@@ -87,7 +87,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         // env
         up <- Assembly{"LABEL", switch_type_env, 0, 0}
-        up <- Assembly{"COPY-INDEXED", r6, r5, 6} // first pointer
+        up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+6, minus one to get symtab too
         up <- Assembly{"DEREF", r5, r5, 1} // length
         up <- Assembly{"ADD", r5, r5, r6} // one after last pointer
         up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
@@ -151,14 +151,14 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         querySymtab(up, r4, r5, r2, sym.getSymID(_add_arg_0, counter), counter)
         querySymtab(up, r5, r6, r2, sym.getSymID(_add_arg_1, counter), counter)
 
-        up <- Assembly{"DEREF", r4, r2, 8}   // first arg
-        up <- Assembly{"DEREF", r5, r2, 9}   // second arg
+        //up <- Assembly{"DEREF", r4, r2, 8}   // first arg
+        //up <- Assembly{"DEREF", r5, r2, 9}   // second arg
         up <- Assembly{"ADD", r4, r4, r5}       // new: [r4] = [r4] + [r5]
         up <- Assembly{"COPY-INDEXED", r3, 2, r4}
         up <- Assembly{"DEREF", r0, r3, 0}
         up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"LABEL", endAddFunc, 0, 0}
-        // Create closure, add to symtab
+        // Create closure
         up <- Assembly{"NEW", r3, 6, 0}
         up <- Assembly{"SET-INDEXED", r3, 0, 1}
         up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
@@ -172,6 +172,12 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
                 up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID("_add_arg_"+strconv.Itoa(i) , counter)}
                 up <- Assembly{"COPY-INDEXED", r3, 5+i, r4}
         }
+
+        // Add to symtab
+        /*up <- Assembly{"DEREF", r4, r2, 6}
+        up <- Assembly{"COPY-INDEXED", r3, 3, r4}
+        up <- Assembly{"COPY-INDEXED", r2, 6, r3}*/
+        addToSymtab(up, r4, r3, r2)
 
         close(up)
 }
