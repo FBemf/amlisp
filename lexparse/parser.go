@@ -5,33 +5,33 @@ import "fmt"
 // This one turns the token list into
 // an AST.
 
-func Parse(prims []primitive) (Ast, error) {
-	s := stack{} // stack of nodes to back up through tree structure
-        var emptynode Ast = &empty{}
-	a := &node{emptynode, emptynode}
+func Parse(prims []Primitive) (Ast, error) {
+	s := stack{} // stack of Nodes to back up through tree structure
+        var emptyNode Ast = &Empty{}
+	a := &Node{emptyNode, emptyNode}
 	top := a
 
 	for _, p := range prims {
-		switch p.kind { // Symbol, openParen, closeParen, LitInt, LitFloat, LitChar
+		switch p.Kind { // Symbol, openParen, closeParen, LitInt, LitFloat, LitChar
 		case openParen:
 			s.push(a)
-			a.left = &node{emptynode, emptynode}
-			a = a.left.(*node)
+			a.Left = &Node{emptyNode, emptyNode}
+			a = a.Left.(*Node)
 		case closeParen:
 			b, ok := s.pop()
 			if ok == false {
 				return nil, errorString{"Unexpected ')'"}
 			}
-			a.left = emptynode
-			a.right = emptynode
+			a.Left = emptyNode
+			a.Right = emptyNode
 			a = b
-			a.right = &node{emptynode, emptynode}
-			a = a.right.(*node)
+			a.Right = &Node{emptyNode, emptyNode}
+			a = a.Right.(*Node)
 		default:
                         newP := p
-			a.left = &newP
-			a.right = &node{emptynode, emptynode}
-			a = a.right.(*node)
+			a.Left = &newP
+			a.Right = &Node{emptyNode, emptyNode}
+			a = a.Right.(*Node)
 		}
 	}
 	if !s.isEmpty() {

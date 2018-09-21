@@ -10,8 +10,8 @@ import "regexp"
    a series of tokens.
 */
 
-// Turns code into a list of primitives
-func Lex(code string) []primitive {
+// Turns code into a list of Primitives
+func Lex(code string) []Primitive {
 
 	rWhitespace := regexp.MustCompile(`^[\s,]`)
 	rOpenParen := regexp.MustCompile(`^\(`)
@@ -24,7 +24,7 @@ func Lex(code string) []primitive {
 	// word matches anything except ( ,)\
 	// and accepts escapes
 
-	prims := make([]primitive, 0)
+	prims := make([]Primitive, 0)
 	for {
 		//fmt.Println(code)
 		//fmt.Println(prims)
@@ -39,14 +39,14 @@ func Lex(code string) []primitive {
 		if len(a) != 0 {
 			//fmt.Println("b")
 			code = b
-			prims = append(prims, primitive{openParen, ""})
+			prims = append(prims, Primitive{openParen, ""})
 			continue
 		}
 		a, b = grab(rCloseParen, code)
 		if len(a) != 0 {
 			//fmt.Println("c")
 			code = b
-			prims = append(prims, primitive{closeParen, ""})
+			prims = append(prims, Primitive{closeParen, ""})
 			continue
 		}
 		/*
@@ -54,14 +54,14 @@ func Lex(code string) []primitive {
 			if len(a) != 0 {
 				//fmt.Println("d")
 				code = b
-				prims = append(prims, primitive{LitInt, a})
+				prims = append(prims, Primitive{LitInt, a})
 				continue
 			}
 			a, b = grab(rLitFloat, code)
 			if len(a) != 0 {
 				//fmt.Println("e")
 				code = b
-				prims = append(prims, primitive{LitFloat, a})
+				prims = append(prims, Primitive{LitFloat, a})
 				continue
 			}
 			a, b = grab(rLitChar, code)
@@ -69,7 +69,7 @@ func Lex(code string) []primitive {
 				//fmt.Println("f")
 				code = b
 				a = a[2:]
-				prims = append(prims, primitive{LitChar, removeEscape(a)})
+				prims = append(prims, Primitive{LitChar, removeEscape(a)})
 				continue
 			}
 		*/
@@ -78,7 +78,7 @@ func Lex(code string) []primitive {
 			//fmt.Println("g")
 			code = b
 			a = a[1 : len(a)-1]
-			prims = append(prims, primitive{LitStr, removeEscape(a)})
+			prims = append(prims, Primitive{LitStr, removeEscape(a)})
 			continue
 		}
 		a, b = grab(rWord, code)
@@ -86,17 +86,17 @@ func Lex(code string) []primitive {
 			//fmt.Println("h")
 			code = b
 			if rLitInt.MatchString(a) {
-				prims = append(prims, primitive{LitInt, a})
+				prims = append(prims, Primitive{LitInt, a})
 				continue
 			} else if rLitFloat.MatchString(a) {
-				prims = append(prims, primitive{LitFloat, a})
+				prims = append(prims, Primitive{LitFloat, a})
 				continue
 			} else if rLitChar.MatchString(a) {
 				a = a[2:]
-				prims = append(prims, primitive{LitChar, removeEscape(a)})
+				prims = append(prims, Primitive{LitChar, removeEscape(a)})
 				continue
 			} else {
-				prims = append(prims, primitive{Symbol, removeEscape(a)})
+				prims = append(prims, Primitive{Symbol, removeEscape(a)})
 				continue
 			}
 		}

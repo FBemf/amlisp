@@ -1,13 +1,13 @@
 package lexparse
 
 /* TODO the AST needs work
-        the idea right now is that
+        the idea Right now is that
         it holds the functions this, next,
-        and isempty, all of which return
+        and isEmpty, all of which return
         another ast. And one you want somethign
         out of it, you call Node or Primitive on it,
-        and it'll either give you the raw node, the
-        raw primitive, or nil. But until then, there's
+        and it'll either give you the raw Node, the
+        raw Primitive, or nil. But until then, there's
         no using nil at all.
 
 
@@ -17,8 +17,8 @@ package lexparse
 
 
 type Ast interface {
-	Node() *node
-	Primitive() *primitive
+	Node() *Node
+	Primitive() *Primitive
         This() Ast
         Next() Ast
         IsEmpty() bool
@@ -26,29 +26,29 @@ type Ast interface {
 
 // The basic components of an amlisp program after
 // all the reader macros have run.
-type primitive struct {
-	kind    int
-	content string
+type Primitive struct {
+	Kind    int
+	Content string
 }
 
-type node struct {
-	left  Ast
-	right Ast
+type Node struct {
+	Left  Ast
+	Right Ast
 }
 
-type empty struct {}
+type Empty struct {}
 
-func (p *primitive) Type() int {
+func (p *Primitive) Type() int {
         if p != nil {
-	        return p.kind
+	        return p.Kind
         } else {
                 return NilType
         }
 }
 
-func (p *primitive) Value() string {
+func (p *Primitive) Value() string {
 	if p != nil {
-                return p.content
+                return p.Content
         } else {
                 return ""
         }
@@ -79,15 +79,15 @@ type stack struct {
 }
 
 type frame struct {
-	val  *node
+	val  *Node
 	next *frame
 }
 
-func (s *stack) push(p *node) {
+func (s *stack) push(p *Node) {
 	s.head = &frame{p, s.head}
 }
 
-func (s *stack) pop() (*node, bool) {
+func (s *stack) pop() (*Node, bool) {
 	if s.head != nil {
 		v := s.head.val
 		s.head = s.head.next
@@ -105,62 +105,62 @@ func (s *stack) isEmpty() bool {
 	}
 }
 
-func (p *primitive) Node() *node {
+func (p *Primitive) Node() *Node {
 	return nil
 }
 
-func (p *primitive) Primitive() *primitive {
+func (p *Primitive) Primitive() *Primitive {
 	return p
 }
 
-func (p *primitive) This() Ast {
-	return &empty{}
+func (p *Primitive) This() Ast {
+	return &Empty{}
 }
 
-func (p *primitive) Next() Ast {
-	return &empty{}
+func (p *Primitive) Next() Ast {
+	return &Empty{}
 }
 
-func (p *primitive) IsEmpty() bool {
+func (p *Primitive) IsEmpty() bool {
         return false
 }
 
-func (n *node) Node() *node {
+func (n *Node) Node() *Node {
 	return n
 }
 
-func (n *node) Primitive() *primitive {
+func (n *Node) Primitive() *Primitive {
 	return nil
 }
 
-func (n *node) This() Ast {
-	return n.left
+func (n *Node) This() Ast {
+	return n.Left
 }
 
-func (n *node) Next() Ast {
-	return n.right
+func (n *Node) Next() Ast {
+	return n.Right
 }
 
-func (n *node) IsEmpty() bool {
+func (n *Node) IsEmpty() bool {
         return false
 }
 
-func (e *empty) Node() *node {
+func (e *Empty) Node() *Node {
         return nil
 }
 
-func (e *empty) Primitive() *primitive {
+func (e *Empty) Primitive() *Primitive {
         return nil
 }
 
-func (e *empty) This() Ast {
+func (e *Empty) This() Ast {
 	return e
 }
 
-func (e *empty) Next() Ast {
+func (e *Empty) Next() Ast {
 	return e
 }
 
-func (e *empty) IsEmpty() bool {
+func (e *Empty) IsEmpty() bool {
         return true
 }
