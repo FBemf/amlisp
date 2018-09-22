@@ -31,5 +31,3 @@ func addToSymtab(up chan Assembly, mem int, symframe int, env int) {
         up <- Assembly{"COPY-INDEXED", symframe, 3, mem}
         up <- Assembly{"COPY-INDEXED", env, 6, symframe}
 }
-
-func newData(up chan Assembly, mem int, dtype int, data int)

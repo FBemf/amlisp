@@ -74,22 +74,30 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         switch_end := counter()
         switch_type_int := counter()
         switch_type_env := counter()
+        switch_type_symtab := counter()
         // TODO ... other types
 
         up <- Assembly{"COPY-ADD", r5, r5, 1}
         up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_int, r5, Type_int}
         up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_env, r5, Type_environment}
+        up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symtab, r5, Type_symtab}
         // TODO ... other types
 
         up <- Assembly{"LABEL", switch_type_int, 0, 0} // int
         // labels for other non-pointer data types
         up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
 
-        // env
+        // env -- at the start of all of these, r5 is pointing to the "type" box
         up <- Assembly{"LABEL", switch_type_env, 0, 0}
         up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+6, minus one to get symtab too
         up <- Assembly{"DEREF", r5, r5, 1} // length
         up <- Assembly{"ADD", r5, r5, r6} // one after last pointer
+        up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
+
+        // symtab
+        up <- Assembly{"LABEL", switch_type_symtab, 0, 0}
+        up <- Assembly{"COPY-ADD", r6, r5, 1} // first pointer is r5+1
+        up <- Assembly{"COPY-ADD", r5, r5, 4} // one after last pointer
         up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
 
         // TODO .. other pointer-set types
