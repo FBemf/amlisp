@@ -4,35 +4,54 @@ import "strconv"
 
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
-        // TODO: Gotta a) enclose this in a jump, b) put the symbols into the symbol table
+        // TODO: put the symbols into the symbol table
 
-        // basic outline of a builtin func:
-        // at start, r0, r1, r2 are all as normal.
-        // at end, are expected to: return return value
-        // and call finishfunc.
-        // ^ That's all enclosed in a jump--after that, there's
-        // code creating a closure that points to the function
+        // All builtin funcs follow these rules:
+        //      - At the start, r0 is the return location,
+        //        r1 is the parent environment, r2 is the
+        //        current environment.
+        //      - At the end, they are expected to return
+        //        the return value to [r0] and call finishfunc
+        //      - The above is the runtime, which is enclosed inside
+        //        a jump. The definition is not hidden away, and
+        //        creates a closure and a symbol in the symbol table
 
         // Finish func
+        // This one's a big deal. It ascends the registers
+        // back to the previous environment (so that r2 is now
+        // the parent environment and r1 is now *that* environment's
+        // parent environment) and garbage-collects the current env
+        // if the last reference is disappearing.
         endFinishFunc = counter()
         up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
-        up <- Assembly{"BOILERPLATE _f", 0, 0, 0}
+        up <- Assembly{"BOILERPLATE-FOR_FF _f", 0, 0, 0}
         up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"DEREF", r3, r0, 0}      // Grab return value
-        up <- Assembly{"ADD1", r3, 0, 0}       // add to the refcount of the returned value
-        up <- Assembly{"SUB1", r2, 0, 0}       // decrement current env refcount ([r2]--)
+        up <- Assembly{"ADD1", r3, 0, 0}        // Add to the refcount of the thing being returned
+        up <- Assembly{"SUB1", r2, 0, 0}        // Decrement current environment's refcount
 
-        up <- Assembly{"DEREF", r3, r2, 3}       // Grab the pc to return to
+        up <- Assembly{"DEREF", r3, r2, 3}       // Find the PC to return to
 
-        up <- Assembly{"COPY-ADD", r5, r2, 0}       // env for dumpfunc
+        up <- Assembly{"COPY-ADD", r5, r2, 0}   // Take a reference to the current environment
+                                                // so it can be GC'd
 
         // Ascend the registers to the previous environment
         up <- Assembly{"COPY-ADD", r2, r1, 0}
         up <- Assembly{"DEREF", r1, r2, 5}
         up <- Assembly{"DEREF", r0, r2, 4}
 
-        // dumpfunc, here and now
-        // Check if refcount is zero--jump past dumpfunc if it isn't
+        // Garbage Collector
+        //
+        // This part's important. Garbage collection is managed by reference counting.
+        // The first entiry in any data structure is it's ref count, or the number of
+        // pointers to it that exist. When that number reaches zero, it's dead.
+        // Now, when an environment goes out of scope, it gets garbage-collected.
+        // This means that it is checked to see if its ref count is zero, and if it is,
+        // then its ref count is set to -1, and all the data structures pointed to by
+        // the environment are garbage-collected. Then, next time memory is allocated,
+        // any block the VM comes across that has a refcount of -1 is deallocated.
+
+        // Check if refcount is zero--jump past GC if it isn't
         skip_jump_de := counter()
         dump_end := counter()
         up <- Assembly{"COPY-ADD", r4, r5, 1}
@@ -43,6 +62,18 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         // You can use registers 4 and up
         // Reminder: The dumpfunc ds looks like:
         //      [refcount] [type] [current ds] [next frame]
+        // The GC has its own data structure. It's a queue,
+        // so that nested data structures can be recursively
+        // deallocated.
+        // i) Refcount: By necessity. It gets set to -1 when
+        //      the GC is finished with it.
+        // ii) Type: Type_dump, not that it matters, since
+        //      there's no reason this should ever see the light
+        //      of day.
+        // iii) Current data structure: A pointer to the data
+        //      structure being garbage-collected in this frame.
+        // iv)  Next frame: A pointer to the next frame in the
+        //      stack.
 
         // Walking into this, r5 is the env to be dumped
 
@@ -147,7 +178,11 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"BOILERPLATE END _f", 0, 0, 0}
         up <- Assembly{"LABEL", endFinishFunc, 0, 0}
 
+        // End of finishfunc.
+        //
+
         // '+' func
+        // First actual function I've made. Adds 2 numbers. Not hard.
         endAddFunc := counter()
         up <- Assembly{"JUMP-LABEL", endAddFunc, 0, 0}
         up <- Assembly{"LABEL", sym.getSymID(builtins["add"], counter), 0, 0}
@@ -159,8 +194,6 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         querySymtab(up, r4, r5, r2, sym.getSymID(_add_arg_0, counter), counter)
         querySymtab(up, r5, r6, r2, sym.getSymID(_add_arg_1, counter), counter)
 
-        //up <- Assembly{"DEREF", r4, r2, 8}   // first arg
-        //up <- Assembly{"DEREF", r5, r2, 9}   // second arg
         up <- Assembly{"ADD", r4, r4, r5}       // new: [r4] = [r4] + [r5]
         up <- Assembly{"COPY-INDEXED", r3, 2, r4}
         up <- Assembly{"DEREF", r0, r3, 0}
