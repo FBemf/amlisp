@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+        "time"
 )
 
 func main() {
@@ -44,6 +45,8 @@ func (m *memuse) alloc(mem []int, length int, prev *memuse) (addr int, ok bool) 
                 return 0, false // if there's no space
         }
 
+        //m.printmemuse()
+
         if m.used == true {
                 if mem[m.start] == -1 {
                         m.used = false
@@ -57,12 +60,12 @@ func (m *memuse) alloc(mem []int, length int, prev *memuse) (addr int, ok bool) 
                                 m.next = m.next.next
                         }
                 } else {
-                        return m.alloc(mem, length, m)
+                        return m.next.alloc(mem, length, m)
                 }
         }
 
         if m.end - m.start < length {
-                return m.alloc(mem, length, m)
+                return m.next.alloc(mem, length, m)
         }
 
         if m.end - m.start == length {
@@ -75,6 +78,15 @@ func (m *memuse) alloc(mem []int, length int, prev *memuse) (addr int, ok bool) 
         m.end = m.start + length
         m.next = &n
         return m.start, ok
+}
+
+func (m *memuse) printmemuse() {
+        if m == nil {
+                return
+        }
+        fmt.Printf(">> %v\n", m)
+
+        m.next.printmemuse()
 }
 
 func jumpLabel(labels map[int]int, cmd codegen.Assembly, cmds []codegen.Assembly, i int) int {
@@ -114,6 +126,7 @@ func run(cmds []codegen.Assembly) {
         var largest int = 0
         // switch on assembly funcs here
         for {
+                time.Sleep(time.Second/5)
                 fmt.Println(mem[0:largest+1])
                 cmd := cmds[i]
                 fmt.Println(cmd)
@@ -126,7 +139,7 @@ func run(cmds []codegen.Assembly) {
                         case "COPY-ADD":
                                 mem[cmd.Arg1] = mem[cmd.Arg2] + cmd.Arg3
                         case "COPY-INDEXED":
-                                mem[mem[cmd.Arg1] + cmd.Arg2] = mem[cmd.Arg3]
+                           mem[mem[cmd.Arg1] + cmd.Arg2] = mem[cmd.Arg3]
                         case "DEREF":
                                 mem[cmd.Arg1] = mem[mem[cmd.Arg2] + cmd.Arg3]
                         case "NEW":
@@ -148,6 +161,13 @@ func run(cmds []codegen.Assembly) {
                         case "JUMP-LABEL-REMEMBER":
                                 mem[cmd.Arg2] = i
                                 i = jumpLabel(labels, cmd, cmds, i)
+                        case "EXCEPTION":
+                                fmt.Println("You threw an exception! Oh my gosh!")
+                                return
+                        case "ADD1":
+                                mem[cmd.Arg1] = mem[cmd.Arg1]+1
+                        case "SUB1":
+                                mem[cmd.Arg1] = mem[cmd.Arg1]-1
                         default:
                                 fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
                 }

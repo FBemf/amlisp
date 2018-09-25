@@ -37,21 +37,20 @@ func GenAssembly(ast lexparse.Ast) []Assembly {
                 ast = ast.Next()
         }
 
-        // TODO: Initialize r0 and r1 properly
         // Create a top-level environment so definitions can happen
         code = append(code, Assembly{"SET-LITERAL", 0, 0, 0})
         code = append(code, Assembly{"SET-LITERAL", r0, 0, 0})
         code = append(code, Assembly{"SET-LITERAL", r1, 0, 0})
         code = append(code, Assembly{"SET-LITERAL", r2, 0, 0})
-        code = append(Assembly{"NEW ENV _f", 0, 0, 0})
-        code = append(Assembly{"NEW", r2, 7, 0})
-        code = append(Assembly{"SET-INDEXED", r2, 0, 0})
-        code = append(Assembly{"SET-INDEXED", r2, 1, Type_environment})
-        code = append(Assembly{"SET-INDEXED", r2, 2, 0})
-        code = append(Assembly{"COPY-INDEXED", r2, 4, 0})
-        code = append(Assembly{"COPY-INDEXED", r2, 5, 0}) // Assumes r1 is return env
-        code = append(Assembly{"SET-INDEXED", r2, 6, 0})
-        code = append(Assemlby{"COPY-ADD", r1, r2, 0})
+        code = append(code, Assembly{"NEW ENV _f", 0, 0, 0})
+        code = append(code, Assembly{"NEW", r2, 7, 0})
+        code = append(code, Assembly{"SET-INDEXED", r2, 0, 0})
+        code = append(code, Assembly{"SET-INDEXED", r2, 1, Type_environment})
+        code = append(code, Assembly{"SET-INDEXED", r2, 2, 0})
+        code = append(code, Assembly{"COPY-INDEXED", r2, 4, 0})
+        code = append(code, Assembly{"COPY-INDEXED", r2, 5, 0}) // Assumes r1 is return env
+        code = append(code, Assembly{"SET-INDEXED", r2, 6, 0})
+        code = append(code, Assembly{"COPY-ADD", r1, r2, 0})
 
         // This unchannels all the compiled stuff
         for a, b := <-boilerplate; b; a, b = <-boilerplate {

@@ -22,7 +22,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         // the parent environment and r1 is now *that* environment's
         // parent environment) and garbage-collects the current env
         // if the last reference is disappearing.
-        endFinishFunc = counter()
+        endFinishFunc := counter()
         up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
         up <- Assembly{"BOILERPLATE-FOR_FF _f", 0, 0, 0}
         up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
@@ -191,8 +191,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"SET-INDEXED", r3, 1, Type_int}
 
         // grab args from symtab
-        querySymtab(up, r4, r5, r2, sym.getSymID(_add_arg_0, counter), counter)
-        querySymtab(up, r5, r6, r2, sym.getSymID(_add_arg_1, counter), counter)
+        querySymtab(up, r4, r5, r2, sym.getSymID("_add_arg_0", counter), counter)
+        querySymtab(up, r5, r6, r2, sym.getSymID("_add_arg_1", counter), counter)
 
         up <- Assembly{"ADD", r4, r4, r5}       // new: [r4] = [r4] + [r5]
         up <- Assembly{"COPY-INDEXED", r3, 2, r4}

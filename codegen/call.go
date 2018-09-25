@@ -17,6 +17,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
         // If this node holds a primitive, we want to allocate
         // memory for it and return a pointer to it
         if p := ast.Primitive(); p != nil {
+                up <- Assembly{"VAL IS "+p.Value(),0,0,0}
                 switch p.Type() {
                         case lexparse.LitInt:
                                 // If this is an integer, return the value
