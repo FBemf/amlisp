@@ -136,12 +136,16 @@ func run(cmds []codegen.Assembly) {
                                 mem[cmd.Arg1] = cmd.Arg2
                         case "SET-INDEXED":
                                 mem[mem[cmd.Arg1] + cmd.Arg2] = cmd.Arg3
+                                largest = max(largest, mem[cmd.Arg1]+cmd.Arg2)
                         case "COPY-ADD":
                                 mem[cmd.Arg1] = mem[cmd.Arg2] + cmd.Arg3
+                                largest = max(largest, mem[cmd.Arg2])
                         case "COPY-INDEXED":
-                           mem[mem[cmd.Arg1] + cmd.Arg2] = mem[cmd.Arg3]
+                                mem[mem[cmd.Arg1] + cmd.Arg2] = mem[cmd.Arg3]
+                                largest = max(largest, mem[cmd.Arg3], mem[mem[cmd.Arg1]+cmd.Arg2])
                         case "DEREF":
                                 mem[cmd.Arg1] = mem[mem[cmd.Arg2] + cmd.Arg3]
+                                largest = max(largest, mem[cmd.Arg1])
                         case "NEW":
                                 mem[cmd.Arg1], _ = use.alloc(mem, cmd.Arg2, nil)
                         case "LABEL":
@@ -165,9 +169,11 @@ func run(cmds []codegen.Assembly) {
                                 fmt.Println("You threw an exception! Oh my gosh!")
                                 return
                         case "ADD1":
-                                mem[cmd.Arg1] = mem[cmd.Arg1]+1
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]]+1
+                                largest = max(largest, mem[cmd.Arg1])
                         case "SUB1":
-                                mem[cmd.Arg1] = mem[cmd.Arg1]-1
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]]-1
+                                largest = max(largest, mem[cmd.Arg1])
                         default:
                                 fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
                 }
