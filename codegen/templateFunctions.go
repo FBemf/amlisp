@@ -8,6 +8,7 @@ func querySymtab(up chan Assembly, mem int, mem2 int, env int, target int, count
         loop := counter()
         end := counter()
         bad := counter()
+        up <- Assembly{"OLE!",0,0,0}
         up <- Assembly{"DEREF", mem, env, 6} // set mem to table
         up <- Assembly{"LABEL", loop, 0, 0}
         // if symtab[2] points to x st x[2] == [target]

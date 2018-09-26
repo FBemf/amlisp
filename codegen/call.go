@@ -293,9 +293,9 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 }
 
                 // Lastly, make the jump into the function's runtime
-                up <- Assembly{"DEREF", r4, r4, 3}      // Grab jump location
+                up <- Assembly{"DEREF", r4, r4, 2}      // Grab jump location // changed 3 to 2
                 up <- Assembly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
-                up <- Assembly{"JUMP-LABEL-REMEMBER", r4, r3, 0} // saves next pc to the cell
+                up <- Assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to the cell
                                                                  // in our environment and jump
                                                                  // into the function
         }

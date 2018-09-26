@@ -4,10 +4,6 @@ import "strconv"
 
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
-        // TODO NEXT: Turn text.go into a proper assemble-run pipeline.
-        // We need SET-LABEL-INDEXED to work.
-        // TODO: put the symbols into the symbol table
-
         // All builtin funcs follow these rules:
         //      - At the start, r0 is the return location,
         //        r1 is the parent environment, r2 is the
@@ -25,8 +21,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         // parent environment) and garbage-collects the current env
         // if the last reference is disappearing.
         endFinishFunc := counter()
-        up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
         up <- Assembly{"BOILERPLATE-FOR_FF _f", 0, 0, 0}
+        up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
         up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"DEREF", r3, r0, 0}      // Grab return value
         up <- Assembly{"ADD1", r3, 0, 0}        // Add to the refcount of the thing being returned
@@ -97,7 +93,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         // iii) top of loop
         dump_start := counter()
-        dump_continue := counter()
+        //dump_continue := counter()
         up <- Assembly{"LABEL", dump_start, 0, 0}
 
         // iv) Set refcount of env to -1
@@ -118,7 +114,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         up <- Assembly{"LABEL", switch_type_int, 0, 0} // int
         // labels for other non-pointer data types
-        up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
+        //up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
+        up <- Assembly{"JUMP-LABEL", dump_start, 0, 0}
 
         // env -- at the start of all of these, r5 is pointing to the "type" box
         up <- Assembly{"LABEL", switch_type_env, 0, 0}
@@ -144,7 +141,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"LABEL", rec_loop, 0, 0}
 
         // vii) if at end, continue
-        up <- Assembly{"JUMP-LABEL-IF-EQ", dump_continue, r5, r6}      // if-is compares a register to a literal
+        //up <- Assembly{"JUMP-LABEL-IF-EQ", dump_continue, r5, r6}
+        up <- Assembly{"JUMP-LABEL-IF-EQ", dump_start, r5, r6}      // if-is compares a register to a literal
                                                                        // if-eq compares two registers
 
         // viii) otherwise, new ds frame
@@ -176,12 +174,13 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"DEREF", r4, r4, 3}
         up <- Assembly{"JUMP-LABEL", dump_start, 0, 0}
         up <- Assembly{"LABEL", dump_end, 0, 0}
-        up <- Assembly{"JUMP", r3, 0, 0}
         up <- Assembly{"BOILERPLATE END _f", 0, 0, 0}
+        up <- Assembly{"JUMP", r3, 0, 0}
         up <- Assembly{"LABEL", endFinishFunc, 0, 0}
 
         // End of finishfunc.
         //
+        up <- Assembly{"SDLFJSDLKFJSDLKFJ",0,0,0}
 
         // '+' func
         // First actual function I've made. Adds 2 numbers. Not hard.

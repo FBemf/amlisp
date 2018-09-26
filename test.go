@@ -22,13 +22,19 @@ func main() {
                         continue
                 }
 		fmt.Println(lexparse.RPrint(t))
-                var _ = codegen.GenAssembly
                 fmt.Println("Compiling...")
                 code := codegen.GenAssembly(t)
                 //for _, i := range code {
                         //fmt.Println(codegen.Disassemble(i))
                 //}
-                run(code)
+                fmt.Println()
+                //interpret(code)
+                //run(assemble(code))
+                h := assemble(code)
+                run(h)
+                //for i := 0; i < len(h); i++ {
+                        //fmt.Println(h[i])
+                //}
 	}
 	return
 }
@@ -117,15 +123,14 @@ func max(nums ...int) int {
         return max
 }
 
-func run(cmds []codegen.Assembly) {
+func interpret(cmds []codegen.Assembly) {
         mem := make([]int, 1000)
         rest := memuse{false, 13, 1000, nil}
         use := memuse{true, 0, 13, &rest}
         labels := make(map[int]int)
-        var i int = 0
-        var largest int = 0
+        largest := 0
         // switch on assembly funcs here
-        for {
+        for i := 0; i < len(cmds); i++ {
                 time.Sleep(time.Second/5)
                 fmt.Println(mem[0:largest+1])
                 cmd := cmds[i]
@@ -162,9 +167,9 @@ func run(cmds []codegen.Assembly) {
                                 }
                         case "JUMP":
                                 i = mem[cmd.Arg1]
-                        case "JUMP-LABEL-REMEMBER":
+                        case "JUMP-REMEMBER":
                                 mem[cmd.Arg2] = i
-                                i = jumpLabel(labels, cmd, cmds, i)
+                                i = mem[cmd.Arg1]
                         case "EXCEPTION":
                                 fmt.Println("You threw an exception! Oh my gosh!")
                                 return
@@ -177,6 +182,114 @@ func run(cmds []codegen.Assembly) {
                         default:
                                 fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
                 }
-                i++
+        }
+}
+
+func assemble(cmds []codegen.Assembly) (bc []codegen.Assembly) {
+        labels := make(map[int]int)
+        interm := make([]codegen.Assembly, 0, len(cmds))
+        // switch on assembly funcs here
+        newAddr := 0
+        for i := 0; i < len(cmds); i++ {
+                cmd := cmds[i]
+                switch (cmd.Command) {
+                        case "LABEL":
+                                labels[cmd.Arg1] = newAddr
+                        default:
+                                interm = append(interm, cmd)
+                                newAddr++
+                }
+        }
+        bc = make([]codegen.Assembly, 0, len(interm))
+        for i := 0; i < len(interm); i++ {
+                cmd := interm[i]
+                switch (cmd.Command) {
+                        case "JUMP-LABEL":
+                                bc = append(bc, codegen.Assembly{"JUMP-LITERAL", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
+                        case "JUMP-LABEL-IF-IS":
+                                bc = append(bc, codegen.Assembly{"JUMP-LITERAL-IF-IS", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
+                        case "JUMP-LABEL-IF-EQ":
+                                bc = append(bc, codegen.Assembly{"JUMP-LITERAL-IF-EQ", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
+                        //case "JUMP-LABEL-REMEMBER":
+                                //bc = append(bc, codegen.Assembly{"JUMP-LITERAL-REMEMBER", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
+                        case "SET-LABEL-INDEXED":       // register, offset, label#
+                                bc = append(bc, codegen.Assembly{"SET-INDEXED", cmd.Arg1, cmd.Arg2, labels[cmd.Arg3]})
+                        default:
+                                bc = append(bc, cmd)
+                }
+        }
+        return
+}
+
+func run(cmds []codegen.Assembly) {
+        mem := make([]int, 1000)
+        rest := memuse{false, 13, 1000, nil}
+        use := memuse{true, 0, 13, &rest}
+        largest := 0
+        // switch on "bytecode" here
+        for i := 0; i < len(cmds); i++ {
+                time.Sleep(time.Second/13)
+                fmt.Print("COMMAND: ")
+                fmt.Println(i)
+                fmt.Println(mem[0:largest+1])
+                fmt.Println(cmds[0:i])
+                fmt.Println(cmds[i])
+                fmt.Println(cmds[i+1:])
+                use.printmemuse()
+                cmd := cmds[i]
+                fmt.Println(cmd)
+                largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+                switch (cmd.Command) {
+                        case "SET-LITERAL":
+                                mem[cmd.Arg1] = cmd.Arg2
+                        case "SET-INDEXED":
+                                mem[mem[cmd.Arg1] + cmd.Arg2] = cmd.Arg3
+                                largest = max(largest, mem[cmd.Arg1]+cmd.Arg2)
+                        case "COPY-ADD":
+                                mem[cmd.Arg1] = mem[cmd.Arg2] + cmd.Arg3
+                                largest = max(largest, mem[cmd.Arg2])
+                        case "COPY-INDEXED":
+                                mem[mem[cmd.Arg1] + cmd.Arg2] = mem[cmd.Arg3]
+                                largest = max(largest, mem[cmd.Arg3], mem[mem[cmd.Arg1]+cmd.Arg2])
+                        case "DEREF":
+                                mem[cmd.Arg1] = mem[mem[cmd.Arg2] + cmd.Arg3]
+                                largest = max(largest, mem[cmd.Arg1])
+                        case "NEW":
+                                mem[cmd.Arg1], _ = use.alloc(mem, cmd.Arg2, nil)
+                        case "JUMP-LITERAL":
+                                i = cmd.Arg1 - 1
+                        case "JUMP-LITERAL-IF-IS":
+                                if mem[cmd.Arg2] == cmd.Arg3 {
+                                        i = cmd.Arg1 - 1
+                                }
+                        case "JUMP-LITERAL-IF-EQ":
+                                if mem[cmd.Arg2] == mem[cmd.Arg3] {
+                                        i = cmd.Arg1 - 1
+                                }
+                        case "JUMP":
+                                i = mem[cmd.Arg1] - 1
+                        case "JUMP-REMEMBER":
+                                mem[cmd.Arg2] = i+1
+                                i = mem[cmd.Arg1] - 1
+                        case "EXCEPTION":
+                                fmt.Println("You threw an exception! Oh my gosh!")
+                                return
+                        case "ADD1":
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]]+1
+                                largest = max(largest, mem[cmd.Arg1])
+                        case "SUB1":
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]]-1
+                                largest = max(largest, mem[cmd.Arg1])
+                        case "ADD":
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg2]] + mem[mem[cmd.Arg3]]
+                                largest = max(largest, mem[cmd.Arg1])
+                        case "SUB":
+                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg2]] - mem[mem[cmd.Arg3]]
+                                largest = max(largest, mem[cmd.Arg1])
+                        case "BREAK!":
+                                return
+                        default:
+                                fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
+                }
         }
 }
