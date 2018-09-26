@@ -4,6 +4,8 @@ import "strconv"
 
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
+        // TODO NEXT: Turn text.go into a proper assemble-run pipeline.
+        // We need SET-LABEL-INDEXED to work.
         // TODO: put the symbols into the symbol table
 
         // All builtin funcs follow these rules:

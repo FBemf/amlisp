@@ -27,6 +27,7 @@ func querySymtab(up chan Assembly, mem int, mem2 int, env int, target int, count
 // symframe is a register holding a pointer to the new frame
 // env is a register with a pointer to a frame
 func addToSymtab(up chan Assembly, mem int, symframe int, env int) {
+        up <- Assembly{"CHECK THIS OUT", 0, 0, 0}
         up <- Assembly{"DEREF", mem, env, 6}
         up <- Assembly{"COPY-INDEXED", symframe, 3, mem}
         up <- Assembly{"COPY-INDEXED", env, 6, symframe}
