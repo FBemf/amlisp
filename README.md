@@ -1,6 +1,6 @@
-##AMLISP
+## AMLISP
 
-###Application-eMbedded LISP
+### Application-eMbedded LISP
 
 What if every application could have emacs lisp? Amlisp is a 
 simple lisp dialect which compiles to extensible bytecode. 
