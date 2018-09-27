@@ -26,7 +26,13 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"DEREF", r3, r0, 0}      // Grab return value
         up <- Assembly{"ADD1", r3, 0, 0}        // Add to the refcount of the thing being returned
+
+        fakeEnvLabel := counter()
+        // a func with no env (hardcoded & optimized) shouldn't have its env
+        // garbage-collected
+        up <- Assembly{"JUMP-LABEL-IF-EQ", fakeEnvLabel, r2, r1}
         up <- Assembly{"SUB1", r2, 0, 0}        // Decrement current environment's refcount
+        up <- Assembly{"LABEL", fakeEnvLabel, 0, 0}
 
         up <- Assembly{"DEREF", r3, r2, 3}       // Find the PC to return to
 
@@ -34,8 +40,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
                                                 // so it can be GC'd
 
         // Ascend the registers to the previous environment
-        up <- Assembly{"COPY-ADD", r2, r1, 0}
-        up <- Assembly{"DEREF", r1, r2, 5}
+        up <- Assembly{"COPY-ADD", r2, r1, 0}   // the registers here are all fucked up
+        up <- Assembly{"DEREF", r1, r2, 5}      // TODO make them behave
         up <- Assembly{"DEREF", r0, r2, 4}
 
         // Garbage Collector
@@ -194,9 +200,13 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         querySymtab(up, r4, r5, r2, sym.getSymID("_add_arg_0", counter), counter)
         querySymtab(up, r5, r6, r2, sym.getSymID("_add_arg_1", counter), counter)
 
-        up <- Assembly{"ADD", r4, r4, r5}       // new: [r4] = [r4] + [r5]
+        up <- Assembly{"DEREF", r4, r4, 2}      // extract raw ints from int structures
+        up <- Assembly{"DEREF", r5, r5, 2}
+
+        up <- Assembly{"ADD", r4, r4, r5}       // new: r4 = [r4] + [r5]
         up <- Assembly{"COPY-INDEXED", r3, 2, r4}
-        up <- Assembly{"DEREF", r0, r3, 0}
+        //up <- Assembly{"DEREF", r0, r3, 0}
+        up <- Assembly{"COPY-INDEXED", r0, 0, r3}
         up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"LABEL", endAddFunc, 0, 0}
         // Create closure

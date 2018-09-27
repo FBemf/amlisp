@@ -237,8 +237,8 @@ func run(cmds []codegen.Assembly) {
         largest := 0
         // switch on "bytecode" here
         for i := 0; i < len(cmds); i++ {
-                //time.Sleep(time.Second/13)
-                fmt.Scanln()
+                //time.Sleep(time.Second/50)
+                //fmt.Scanln()
                 printInd(mem[0:largest+1])
                 use.printmemuse()
                 cmd := cmds[i]
@@ -276,7 +276,7 @@ func run(cmds []codegen.Assembly) {
                         case "JUMP":
                                 i = mem[cmd.Arg1] - 1
                         case "JUMP-REMEMBER":
-                                mem[cmd.Arg2] = i+1
+                                mem[mem[cmd.Arg2]] = i+1
                                 i = mem[cmd.Arg1] - 1
                         case "EXCEPTION":
                                 fmt.Println("You threw an exception! Oh my gosh!")
@@ -288,10 +288,10 @@ func run(cmds []codegen.Assembly) {
                                 mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]]-1
                                 largest = max(largest, mem[cmd.Arg1])
                         case "ADD":
-                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg2]] + mem[mem[cmd.Arg3]]
+                                mem[cmd.Arg1] = mem[cmd.Arg2] + mem[cmd.Arg3]
                                 largest = max(largest, mem[cmd.Arg1])
                         case "SUB":
-                                mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg2]] - mem[mem[cmd.Arg3]]
+                                mem[cmd.Arg1] = mem[cmd.Arg2] - mem[cmd.Arg3]
                                 largest = max(largest, mem[cmd.Arg1])
                         case "BREAK!":
                                 return
@@ -299,4 +299,5 @@ func run(cmds []codegen.Assembly) {
                                 fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
                 }
         }
+        printInd(mem[0:largest+1])
 }

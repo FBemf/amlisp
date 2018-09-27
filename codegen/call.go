@@ -27,7 +27,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                 up <- Assembly{"SET-INDEXED", r3, 1, Type_int} // type
                                 val, _ := strconv.Atoi(p.Value())
                                 up <- Assembly{"SET-INDEXED", r3, 2, val} // val
-                                up <- Assembly{"SET-INDEXED", r0, 0, r3}        // return
+                                up <- Assembly{"COPY-INDEXED", r0, 0, r3}        // return
                         case lexparse.Symbol:
                                 // If "quoted" is on (read: this is an argument in (symbol-quote),
                                 // return the raw symbol for this. Otherwise, return the value
@@ -42,10 +42,13 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                                 } else {
                                         up <- Assembly{"VARIABLE SYMBOL _f", 0, 0, 0}
                                         querySymtab(up, r4, r3, r2, sym.getSymID(p.Value(), counter), counter)
-                                        up <- Assembly{"COPY-ADD", r0, r4, 0}
+                                        up <- Assembly{"COPY-INDEXED", r0, 0, r4}
                                 }
                         default:
                                 fmt.Printf("Unexpected primitive type %v\n", p.Type())
+                up <- Assembly{"COPY-ADD", r2, r1, 0}
+                up <- Assembly{"DEREF", r1, r2, 5}
+                up <- Assembly{"DEREF", r0, r2, 4}
                 }
                 close(up)
                 return
@@ -269,7 +272,24 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                 // table so that the top entry with that symbol will hold the relevant
                 // argument for that function
 
+                // TODO THIS PLACE IS COMMAND 168 RN
+
                 for m := 1; m < members; m++ {
+
+                        // I could *probably* replace this whole block with
+                        // addToSymtab if I was willing to rework it to take a
+                        // symbol from a register
+
+                        // Find the ID of the symbol held in the closure
+                        up <- Assembly{"DEREF", r3, r4, 4+m}    // r3 = [[r4] + 4+m]
+                        up <- Assembly{"DEREF", r3, r3, 2}      // r3 = [[r3] + 2]
+                        // Then find the related argument in the function call
+                        // and set the location pointer in the symtab frame to be that
+                        up <- Assembly{"DEREF", r7, r2, 7+m}    // r3 = [[r2] + 7+m]
+                        // Add it to symtab
+                        addToSymtabRegister(up, r5, r6, r3, r7, r2)
+
+                        /*
                         up <- Assembly{"NEW", r5, 5, 0}                 // This block creates a
                         up <- Assembly{"SET-INDEXED", r5, 0, 1}         // new symtab frame
                         up <- Assembly{"SET-INDEXED", r5, 1, Type_symtab}
@@ -290,8 +310,11 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
                         up <- Assembly{"DEREF", r3, r2, 6}      // r3 = [[r2]+6]
                         up <- Assembly{"COPY-INDEXED", r5, 4, r3}       // [r5]+4 = [r3]
                         up <- Assembly{"COPY-INDEXED", r2, 6, r5}       // [r2]+6 = [r5]
+                        */
                 }
 
+                // Give it somewhere to return to
+                up <- Assembly{"DEREF", r0, r2, 4}
                 // Lastly, make the jump into the function's runtime
                 up <- Assembly{"DEREF", r4, r4, 2}      // Grab jump location // changed 3 to 2
                 up <- Assembly{"COPY-ADD", r3, r2, 3}    // r3 = [r2] + 3
