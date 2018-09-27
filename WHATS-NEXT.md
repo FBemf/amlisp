@@ -14,7 +14,7 @@ should be handling return values from function calls.
 - Nested calls need to be debugged
 Right now, "(+ 2 (+ 4 5))" doesn't work, and idk why.
 This is probably a simple enough debugging job, albeit
-probably a pain in the ass.
+probably also a pain in the ass.
 
 - A better debugging interface
 I have a headache. A nicer debugging interface would do
