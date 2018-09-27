@@ -56,6 +56,7 @@ func addToSymtab(up chan Assembly, mem int, mem2 int, symbol int, target int, en
         up <- Assembly{"COPY-INDEXED", env, 6, mem}
 }
 
+// TODO: Merge this with the above??
 // mem mem2 are empty registers
 // symbol is a register holding the symbol
 // target is a register holding the primitive
