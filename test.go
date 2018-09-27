@@ -123,6 +123,14 @@ func max(nums ...int) int {
         return max
 }
 
+func printInd(a []int) {
+        fmt.Printf("[")
+        for i, v := range a {
+                fmt.Printf(" %d:%d,", i, v)
+        }
+        fmt.Printf(" ]\n")
+}
+
 func interpret(cmds []codegen.Assembly) {
         mem := make([]int, 1000)
         rest := memuse{false, 13, 1000, nil}
@@ -153,6 +161,7 @@ func interpret(cmds []codegen.Assembly) {
                                 largest = max(largest, mem[cmd.Arg1])
                         case "NEW":
                                 mem[cmd.Arg1], _ = use.alloc(mem, cmd.Arg2, nil)
+                                largest = max(largest, mem[cmd.Arg1])
                         case "LABEL":
                                 labels[cmd.Arg1] = i
                         case "JUMP-LABEL":
@@ -228,15 +237,13 @@ func run(cmds []codegen.Assembly) {
         largest := 0
         // switch on "bytecode" here
         for i := 0; i < len(cmds); i++ {
-                time.Sleep(time.Second/13)
-                fmt.Print("COMMAND: ")
-                fmt.Println(i)
-                fmt.Println(mem[0:largest+1])
-                fmt.Println(cmds[0:i])
-                fmt.Println(cmds[i])
-                fmt.Println(cmds[i+1:])
+                //time.Sleep(time.Second/13)
+                fmt.Scanln()
+                printInd(mem[0:largest+1])
                 use.printmemuse()
                 cmd := cmds[i]
+                fmt.Print("COMMAND: ")
+                fmt.Print(i)
                 fmt.Println(cmd)
                 largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
                 switch (cmd.Command) {

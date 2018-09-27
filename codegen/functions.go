@@ -93,7 +93,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         // iii) top of loop
         dump_start := counter()
-        //dump_continue := counter()
+        dump_continue := counter()
         up <- Assembly{"LABEL", dump_start, 0, 0}
 
         // iv) Set refcount of env to -1
@@ -114,8 +114,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         up <- Assembly{"LABEL", switch_type_int, 0, 0} // int
         // labels for other non-pointer data types
-        //up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
-        up <- Assembly{"JUMP-LABEL", dump_start, 0, 0}
+        up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
 
         // env -- at the start of all of these, r5 is pointing to the "type" box
         up <- Assembly{"LABEL", switch_type_env, 0, 0}
@@ -141,8 +140,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"LABEL", rec_loop, 0, 0}
 
         // vii) if at end, continue
-        //up <- Assembly{"JUMP-LABEL-IF-EQ", dump_continue, r5, r6}
-        up <- Assembly{"JUMP-LABEL-IF-EQ", dump_start, r5, r6}      // if-is compares a register to a literal
+        up <- Assembly{"JUMP-LABEL-IF-EQ", dump_continue, r5, r6}      // if-is compares a register to a literal
                                                                        // if-eq compares two registers
 
         // viii) otherwise, new ds frame
@@ -164,6 +162,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"JUMP-LABEL", rec_loop, 0, 0}
 
         // xiii) set current ds frame refcount to -1 (this is where "continue" is)
+        up <- Assembly{"LABEL", dump_continue, 0, 0}
         up <- Assembly{"SET-INDEXED", r4, 0, -1}
 
         // xiv) if next frame zero, exit
@@ -180,7 +179,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
         // End of finishfunc.
         //
-        up <- Assembly{"SDLFJSDLKFJSDLKFJ",0,0,0}
+        up <- Assembly{"SDLFJSDLKFJSDLKFJ _f",0,0,0}
 
         // '+' func
         // First actual function I've made. Adds 2 numbers. Not hard.
@@ -201,7 +200,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
         up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
         up <- Assembly{"LABEL", endAddFunc, 0, 0}
         // Create closure
-        up <- Assembly{"NEW", r3, 6, 0}
+        up <- Assembly{"NEW", r3, 7, 0}
         up <- Assembly{"SET-INDEXED", r3, 0, 1}
         up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
         up <- Assembly{"SET-LABEL-INDEXED", r3, 2, sym.getSymID(builtins["add"], counter)}      // sets a cell to be a label.
@@ -215,11 +214,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
                 up <- Assembly{"COPY-INDEXED", r3, 5+i, r4}
         }
 
-        // Add to symtab
-        /*up <- Assembly{"DEREF", r4, r2, 6}
-        up <- Assembly{"COPY-INDEXED", r3, 3, r4}
-        up <- Assembly{"COPY-INDEXED", r2, 6, r3}*/
-        addToSymtab(up, r4, r3, r2)
+        addToSymtab(up, r4, r5, sym.getSymID(builtins["add"], counter), r3, r2)
 
         close(up)
 }

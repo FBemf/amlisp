@@ -15,7 +15,7 @@ func GenAssembly(ast lexparse.Ast) []Assembly {
         builtins = map[string]string{
                 "SYMBOL-QUOTE": "internal-quote",
                 "add": "+",
-                "subtract": "-",
+                "subtract": "sub",
                 "cons": "cons",
                 "car": "car",
                 "cdr": "cdr",
