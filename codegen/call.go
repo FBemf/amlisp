@@ -288,7 +288,8 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			// Add it to symtab
 			addToSymtabRegister(up, r5, r6, r3, r7, r2)
 
-			/*
+			/*	// So this part is completely redundant now
+			
 			   up <- Assembly{"NEW", r5, 5, 0}                 // This block creates a
 			   up <- Assembly{"SET-INDEXED", r5, 0, 1}         // new symtab frame
 			   up <- Assembly{"SET-INDEXED", r5, 1, Type_symtab}
