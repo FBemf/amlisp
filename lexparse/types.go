@@ -1,27 +1,26 @@
 package lexparse
 
 /* TODO the AST needs work
-        the idea Right now is that
-        it holds the functions this, next,
-        and isEmpty, all of which return
-        another ast. And one you want somethign
-        out of it, you call Node or Primitive on it,
-        and it'll either give you the raw Node, the
-        raw Primitive, or nil. But until then, there's
-        no using nil at all.
+   the idea Right now is that
+   it holds the functions this, next,
+   and isEmpty, all of which return
+   another ast. And one you want somethign
+   out of it, you call Node or Primitive on it,
+   and it'll either give you the raw Node, the
+   raw Primitive, or nil. But until then, there's
+   no using nil at all.
 
 
-        This file now holds with that; now you need to
-        propogate it through the rest of the project
+   This file now holds with that; now you need to
+   propogate it through the rest of the project
 */
-
 
 type Ast interface {
 	Node() *Node
 	Primitive() *Primitive
-        This() Ast
-        Next() Ast
-        IsEmpty() bool
+	This() Ast
+	Next() Ast
+	IsEmpty() bool
 }
 
 // The basic components of an amlisp program after
@@ -36,26 +35,26 @@ type Node struct {
 	Right Ast
 }
 
-type Empty struct {}
+type Empty struct{}
 
 func (p *Primitive) Type() int {
-        if p != nil {
-	        return p.Kind
-        } else {
-                return NilType
-        }
+	if p != nil {
+		return p.Kind
+	} else {
+		return NilType
+	}
 }
 
 func (p *Primitive) Value() string {
 	if p != nil {
-                return p.Content
-        } else {
-                return ""
-        }
+		return p.Content
+	} else {
+		return ""
+	}
 }
 
 const (
-        NilType = iota
+	NilType = iota
 	Symbol
 	LitInt
 	LitFloat
@@ -122,7 +121,7 @@ func (p *Primitive) Next() Ast {
 }
 
 func (p *Primitive) IsEmpty() bool {
-        return false
+	return false
 }
 
 func (n *Node) Node() *Node {
@@ -142,15 +141,15 @@ func (n *Node) Next() Ast {
 }
 
 func (n *Node) IsEmpty() bool {
-        return false
+	return false
 }
 
 func (e *Empty) Node() *Node {
-        return nil
+	return nil
 }
 
 func (e *Empty) Primitive() *Primitive {
-        return nil
+	return nil
 }
 
 func (e *Empty) This() Ast {
@@ -162,5 +161,5 @@ func (e *Empty) Next() Ast {
 }
 
 func (e *Empty) IsEmpty() bool {
-        return true
+	return true
 }

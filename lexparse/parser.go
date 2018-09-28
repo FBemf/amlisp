@@ -7,7 +7,7 @@ import "fmt"
 
 func Parse(prims []Primitive) (Ast, error) {
 	s := stack{} // stack of Nodes to back up through tree structure
-        var emptyNode Ast = &Empty{}
+	var emptyNode Ast = &Empty{}
 	a := &Node{emptyNode, emptyNode}
 	top := a
 
@@ -28,7 +28,7 @@ func Parse(prims []Primitive) (Ast, error) {
 			a.Right = &Node{emptyNode, emptyNode}
 			a = a.Right.(*Node)
 		default:
-                        newP := p
+			newP := p
 			a.Left = &newP
 			a.Right = &Node{emptyNode, emptyNode}
 			a = a.Right.(*Node)
