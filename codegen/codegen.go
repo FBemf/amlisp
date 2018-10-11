@@ -62,6 +62,7 @@ func GenAssembly(ast lexparse.Ast) []Assembly {
 			code = append(code, a)
 		}
 	}
-	fmt.Print(sym)
+	//fmt.Print(sym)
+	_ = fmt.Print
 	return code
 }

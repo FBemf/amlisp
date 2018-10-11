@@ -111,7 +111,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			members++
 		}
 	}
-	fmt.Printf("MEMBERS: %d\n", members) //  a little piece of debug code
+	//fmt.Printf("MEMBERS: %d\n", members) //  a little piece of debug code
 
 	up <- Assembly{"NEW ENV _f", 0, 0, 0} // Assembly calls ending in "_f" are just
 	// comments I left so I could see where I
@@ -153,7 +153,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 	up <- Assembly{"ARGS _f", 0, 0, 0}
 	for m := 0; m < members; m++ {
 		argCode[m] = make(chan Assembly, 100)
-		fmt.Println(lexparse.RPrint(ast))
+		//fmt.Println(lexparse.RPrint(ast))
 		if !quoted || m == 0 {
 			go call(argCode[m], ast.This(), counter, sym, false)
 		} else {

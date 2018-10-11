@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"time"
 )
 
 func main() {
@@ -24,17 +23,12 @@ func main() {
 		fmt.Println(lexparse.RPrint(t))
 		fmt.Println("Compiling...")
 		code := codegen.GenAssembly(t)
-		//for _, i := range code {
-		//fmt.Println(codegen.Disassemble(i))
-		//}
 		fmt.Println()
-		//interpret(code)
-		//run(assemble(code))
 		h := assemble(code)
-		run(h)
-		//for i := 0; i < len(h); i++ {
-		//fmt.Println(h[i])
-		//}
+		//events := run(h)
+		_ = run(h)
+		//fmt.Print(events)
+		fmt.Println("Finished running. Write more code to see what it did.")
 	}
 	return
 }
@@ -44,6 +38,14 @@ type memuse struct {
 	start int
 	end   int
 	next  *memuse
+}
+
+func memuseCopy(m *memuse) *memuse {
+	if m == nil {
+		return nil
+	} else {
+		return &memuse{m.used, m.start, m.end, memuseCopy(m.next)}
+	}
 }
 
 func (m *memuse) alloc(mem []int, length int, prev *memuse) (addr int, ok bool) {
@@ -123,75 +125,14 @@ func max(nums ...int) int {
 	return max
 }
 
-func printInd(a []int) {
-	fmt.Printf("[")
+func printInd(a []int) (out string) {
+	out = ""
+	out += fmt.Sprintf("[")
 	for i, v := range a {
-		fmt.Printf(" %d:%d,", i, v)
+		out += fmt.Sprintf(" %d:%d,", i, v)
 	}
-	fmt.Printf(" ]\n")
-}
-
-func interpret(cmds []codegen.Assembly) {
-	mem := make([]int, 1000)
-	rest := memuse{false, 13, 1000, nil}
-	use := memuse{true, 0, 13, &rest}
-	labels := make(map[int]int)
-	largest := 0
-	// switch on assembly funcs here
-	for i := 0; i < len(cmds); i++ {
-		time.Sleep(time.Second / 5)
-		fmt.Println(mem[0 : largest+1])
-		cmd := cmds[i]
-		fmt.Println(cmd)
-		largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
-		switch cmd.Command {
-		case "SET-LITERAL":
-			mem[cmd.Arg1] = cmd.Arg2
-		case "SET-INDEXED":
-			mem[mem[cmd.Arg1]+cmd.Arg2] = cmd.Arg3
-			largest = max(largest, mem[cmd.Arg1]+cmd.Arg2)
-		case "COPY-ADD":
-			mem[cmd.Arg1] = mem[cmd.Arg2] + cmd.Arg3
-			largest = max(largest, mem[cmd.Arg2])
-		case "COPY-INDEXED":
-			mem[mem[cmd.Arg1]+cmd.Arg2] = mem[cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg3], mem[mem[cmd.Arg1]+cmd.Arg2])
-		case "DEREF":
-			mem[cmd.Arg1] = mem[mem[cmd.Arg2]+cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg1])
-		case "NEW":
-			mem[cmd.Arg1], _ = use.alloc(mem, cmd.Arg2, nil)
-			largest = max(largest, mem[cmd.Arg1])
-		case "LABEL":
-			labels[cmd.Arg1] = i
-		case "JUMP-LABEL":
-			i = jumpLabel(labels, cmd, cmds, i)
-		case "JUMP-LABEL-IF-IS":
-			if mem[cmd.Arg2] == cmd.Arg3 {
-				i = jumpLabel(labels, cmd, cmds, i)
-			}
-		case "JUMP-LABEL-IF-EQ":
-			if mem[cmd.Arg2] == mem[cmd.Arg3] {
-				i = jumpLabel(labels, cmd, cmds, i)
-			}
-		case "JUMP":
-			i = mem[cmd.Arg1]
-		case "JUMP-REMEMBER":
-			mem[cmd.Arg2] = i
-			i = mem[cmd.Arg1]
-		case "EXCEPTION":
-			fmt.Println("You threw an exception! Oh my gosh!")
-			return
-		case "ADD1":
-			mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]] + 1
-			largest = max(largest, mem[cmd.Arg1])
-		case "SUB1":
-			mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]] - 1
-			largest = max(largest, mem[cmd.Arg1])
-		default:
-			fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
-		}
-	}
+	out += fmt.Sprintf(" ]\n")
+	return
 }
 
 func assemble(cmds []codegen.Assembly) (bc []codegen.Assembly) {
@@ -230,39 +171,63 @@ func assemble(cmds []codegen.Assembly) (bc []codegen.Assembly) {
 	return
 }
 
-func run(cmds []codegen.Assembly) {
-	mem := make([]int, 1000)
+type instant struct {
+	command codegen.Assembly
+	mem []int
+	use memuse
+	largest int
+	message string
+}
+
+func enlargeMem(mem []int, size int) []int {
+	if cap(mem) <= size {
+		n := make([]int, 2*size)
+		copy(n, mem)
+		mem = n
+	} else if len(mem) <= size {
+		mem = mem[:size]
+	}
+	return mem
+}
+
+func run(cmds []codegen.Assembly) []instant {
+	mem := make([]int, 20, 1000)
 	rest := memuse{false, 13, 1000, nil}
 	use := memuse{true, 0, 13, &rest}
 	largest := 0
+	history := make([]instant, 0, 400)
 	// switch on "bytecode" here
 	for i := 0; i < len(cmds); i++ {
-		//time.Sleep(time.Second/50)
-		//fmt.Scanln()
-		printInd(mem[0 : largest+1])
-		use.printmemuse()
 		cmd := cmds[i]
-		fmt.Print("COMMAND: ")
-		fmt.Print(i)
-		fmt.Println(cmd)
-		largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+		message := ""
+
 		switch cmd.Command {
 		case "SET-LITERAL":
+			largest = max(largest, cmd.Arg1)
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = cmd.Arg2
 		case "SET-INDEXED":
+			largest = max(largest, cmd.Arg3, mem[cmd.Arg1]+cmd.Arg2)
+			mem = enlargeMem(mem, largest)
 			mem[mem[cmd.Arg1]+cmd.Arg2] = cmd.Arg3
-			largest = max(largest, mem[cmd.Arg1]+cmd.Arg2)
 		case "COPY-ADD":
+			largest = max(largest, cmd.Arg1, cmd.Arg2)
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = mem[cmd.Arg2] + cmd.Arg3
-			largest = max(largest, mem[cmd.Arg2])
 		case "COPY-INDEXED":
+			largest = max(largest, cmd.Arg3, mem[cmd.Arg1]+cmd.Arg2)
+			mem = enlargeMem(mem, largest)
 			mem[mem[cmd.Arg1]+cmd.Arg2] = mem[cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg3], mem[mem[cmd.Arg1]+cmd.Arg2])
 		case "DEREF":
+			largest = max(largest, mem[cmd.Arg2]+cmd.Arg3, mem[cmd.Arg1])
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = mem[mem[cmd.Arg2]+cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg1])
 		case "NEW":
+			largest = max(largest, cmd.Arg1)
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1], _ = use.alloc(mem, cmd.Arg2, nil)
+			largest = max(largest, mem[cmd.Arg1]+cmd.Arg2-1)
+			mem = enlargeMem(mem, largest)
 		case "JUMP-LITERAL":
 			i = cmd.Arg1 - 1
 		case "JUMP-LITERAL-IF-IS":
@@ -279,25 +244,33 @@ func run(cmds []codegen.Assembly) {
 			mem[mem[cmd.Arg2]] = i + 1
 			i = mem[cmd.Arg1] - 1
 		case "EXCEPTION":
-			fmt.Println("You threw an exception! Oh my gosh!")
-			return
+			message += fmt.Sprintln("You threw an exception! Oh my gosh!")
+			break
 		case "ADD1":
+			largest = max(largest, mem[cmd.Arg1])
+			mem = enlargeMem(mem, largest)
 			mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]] + 1
-			largest = max(largest, mem[cmd.Arg1])
 		case "SUB1":
+			largest = max(largest, mem[cmd.Arg1])
+			mem = enlargeMem(mem, largest)
 			mem[mem[cmd.Arg1]] = mem[mem[cmd.Arg1]] - 1
-			largest = max(largest, mem[cmd.Arg1])
 		case "ADD":
+			largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = mem[cmd.Arg2] + mem[cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg1])
 		case "SUB":
+			largest = max(largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = mem[cmd.Arg2] - mem[cmd.Arg3]
-			largest = max(largest, mem[cmd.Arg1])
 		case "BREAK!":
-			return
+			break
 		default:
-			fmt.Printf("SPECIAL COMMAND %s\n", cmd.Command)
+			message += fmt.Sprintf("SPECIAL COMMAND %s\n", cmd.Command)
 		}
+	memcpy := make([]int, len(mem))
+	copy(memcpy, mem)
+	usecpy := memuseCopy(&use)
+	history = append(history, instant{cmd, memcpy, *usecpy, largest, message})
 	}
-	printInd(mem[0 : largest+1])
+	return history
 }
