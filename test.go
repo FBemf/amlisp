@@ -6,6 +6,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
 )
 
 func main() {
@@ -25,10 +27,68 @@ func main() {
 		code := codegen.GenAssembly(t)
 		fmt.Println()
 		h := assemble(code)
-		//events := run(h)
-		_ = run(h)
+		fmt.Println("Executing...")
+		events := run(h)
 		//fmt.Print(events)
-		fmt.Println("Finished running. Write more code to see what it did.")
+		fmt.Println("Finished. Post-mortem:")
+
+		var oldCount int = 1
+		var index int = 0
+		var last byte = 'j'
+		var b []byte = make([]byte, 1)
+		_ = strconv.Atoi
+		var s string = ""
+		fmt.Printf("Line %d.\n", index)
+		// disable input buffering
+		exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
+		for {
+			os.Stdin.Read(b)
+			if b[0] >= byte('0') && b[0] <= byte('9') {
+				s += string(b)
+				continue
+			}
+			c, _ := strconv.Atoi(s)
+			s = ""
+			if c == 0 {
+				c++
+			}
+			fmt.Println()
+
+			exec:
+			for i := 0; i < c; i++ {
+				switch (b[0]) {
+				case 'j':
+					if (index < len(events)-1) {
+						index++
+					}
+				case 'k':
+					if (index > 0) {
+						index--
+					}
+				case 'p':
+					fmt.Println(printmem(events[index].mem, &events[index].use, ""))
+				case 'c':
+					fmt.Println(events[index].command)
+				case 'a':
+					events[index].use.printmemuse()
+				case 'g':
+					if 0 > c {
+						index = 0
+					} else if len(events) <= c {
+						index = len(events) - 1
+					} else {
+						index = c
+					}
+				default:
+					b[0] = last
+					c = oldCount
+					goto exec
+				}
+			}
+			fmt.Printf("Line %d.\n", index)
+			oldCount = c
+			last = b[0]
+		}
 	}
 	return
 }
@@ -135,6 +195,37 @@ func printInd(a []int) (out string) {
 	return
 }
 
+func printmem(mem []int, use *memuse, glob string) string {
+	if use == nil {
+		return glob
+	}
+	if use.used == false {
+		return printmem(mem, use.next, glob)
+	}
+	types := map[int]string {
+		codegen.Type_environment: "ENV",
+		codegen.Type_closure: "CLO",
+		codegen.Type_dump: "DUMP",
+		codegen.Type_symtab: "STAB",
+		codegen.Type_cons: "CONS",
+		codegen.Type_vector: "VEC",
+		codegen.Type_int: "INT",
+		codegen.Type_symbol: "SYM"}
+	_ = types
+
+	s := "["
+	if use.start == 0 {
+		s += fmt.Sprintf("(%d:%d), (%d:%d)", use.start, mem[use.start], use.start+1, mem[use.start+1])
+	} else {
+		s += fmt.Sprintf("(%d:%d), %s", use.start, mem[use.start], types[mem[use.start+1]])
+	}
+	for i := use.start+2; i < use.end; i++ {
+		s += fmt.Sprintf(", (%d:%d)", i, mem[i])
+	}
+	s += "]\n"
+	return printmem(mem, use.next, glob + s)
+}
+
 func assemble(cmds []codegen.Assembly) (bc []codegen.Assembly) {
 	labels := make(map[int]int)
 	interm := make([]codegen.Assembly, 0, len(cmds))
@@ -184,8 +275,9 @@ func enlargeMem(mem []int, size int) []int {
 		n := make([]int, 2*size)
 		copy(n, mem)
 		mem = n
-	} else if len(mem) <= size {
-		mem = mem[:size]
+	}
+	if len(mem) <= size {
+		mem = mem[:size+1]
 	}
 	return mem
 }
@@ -200,6 +292,9 @@ func run(cmds []codegen.Assembly) []instant {
 	for i := 0; i < len(cmds); i++ {
 		cmd := cmds[i]
 		message := ""
+		//fmt.Println(i)
+		//fmt.Println(cmd)
+		//fmt.Println(printInd(mem))
 
 		switch cmd.Command {
 		case "SET-LITERAL":
@@ -207,7 +302,7 @@ func run(cmds []codegen.Assembly) []instant {
 			mem = enlargeMem(mem, largest)
 			mem[cmd.Arg1] = cmd.Arg2
 		case "SET-INDEXED":
-			largest = max(largest, cmd.Arg3, mem[cmd.Arg1]+cmd.Arg2)
+			largest = max(largest, mem[cmd.Arg1]+cmd.Arg2)
 			mem = enlargeMem(mem, largest)
 			mem[mem[cmd.Arg1]+cmd.Arg2] = cmd.Arg3
 		case "COPY-ADD":
