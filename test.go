@@ -256,8 +256,8 @@ func assemble(cmds []codegen.Assembly) (bc []codegen.Assembly) {
 			bc = append(bc, codegen.Assembly{"JUMP-LITERAL-IF-IS", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
 		case "JUMP-LABEL-IF-EQ":
 			bc = append(bc, codegen.Assembly{"JUMP-LITERAL-IF-EQ", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
-		//case "JUMP-LABEL-REMEMBER":
-		//bc = append(bc, codegen.Assembly{"JUMP-LITERAL-REMEMBER", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
+		case "JUMP-LABEL-REMEMBER":
+			bc = append(bc, codegen.Assembly{"JUMP-LITERAL-REMEMBER", labels[cmd.Arg1], cmd.Arg2, cmd.Arg3})
 		case "SET-LABEL-INDEXED": // register, offset, label#
 			bc = append(bc, codegen.Assembly{"SET-INDEXED", cmd.Arg1, cmd.Arg2, labels[cmd.Arg3]})
 		default:
@@ -344,6 +344,9 @@ func run(cmds []codegen.Assembly) []instant {
 		case "JUMP-REMEMBER":
 			mem[mem[cmd.Arg2]] = i + 1
 			i = mem[cmd.Arg1] - 1
+		case "JUMP-LITERAL-REMEMBER":	// new, maybe broken
+			mem[mem[cmd.Arg2]] = i + 1
+			i = cmd.Arg1 - 1
 		case "EXCEPTION":
 			message += fmt.Sprintln("You threw an exception! Oh my gosh!")
 			break
@@ -426,6 +429,9 @@ func cmd_push(history *[]instant, cmds *[]codegen.Assembly, mem *[]int, use *mem
 	case "JUMP-REMEMBER":
 		(*mem)[(*mem)[cmd.Arg2]] = *i + 1
 		*i = (*mem)[cmd.Arg1] - 1
+	case "JUMP-LITERAL-REMEMBER":	// new, maybe broken
+		(*mem)[(*mem)[cmd.Arg2]] = *i + 1
+		*i = cmd.Arg1 - 1
 	case "EXCEPTION":
 		message += fmt.Sprintln("You threw an exception! Oh my gosh!")
 		break
@@ -511,14 +517,17 @@ func interactive_interpret(cmds []codegen.Assembly) {
 				history[index].use.printmemuse()
 			case 'g':
 				if 0 > c {
+					fmt.Println("ONE")
 					index = 0
 				} else if index > c {
+					fmt.Println("TWO")
 					index = c
 				} else {
+					fmt.Println("THREE")
 					for {
-						if index < len(history)-1 {
+						if index < len(history)-1 && index < c {
 							index++
-						} else if (position < len(cmds)) {
+						} else if (position < len(cmds) && index < c) {
 							index++
 							if index > top {
 								cmd_push(&history, &cmds, &mem, &use, &largest, &position)
@@ -529,12 +538,14 @@ func interactive_interpret(cmds []codegen.Assembly) {
 						}
 					}
 				}
+				goto loopBreak
 			default:
 				b[0] = last
 				c = oldCount
 				goto exec
 			}
 		}
+		loopBreak:
 		fmt.Printf("Line %d, pos %d: %v\n", index, history[index].position, history[index].command)
 		oldCount = c
 		last = b[0]

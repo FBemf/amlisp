@@ -323,7 +323,8 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 
 		// Go to finishfunc to clear up this env
 		// TODO this breaks the code.
-		//up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+		up <- Assembly{"JUMP-LABEL-REMEMBER", sym.getSymID(builtins["FINISHFUNC"], counter), r3, 0}
+		up <- Assembly {"EXCEPION",0,0,0}
 
 	}
 	close(up)
