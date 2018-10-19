@@ -67,21 +67,26 @@ func addToSymtabRegister(up chan Assembly, mem int, mem2 int, symbol int, target
 	// id: [refcount] [type symbol]
 
 	// NB: This function starts the refcount at 1.
-	up <- Assembly{"CHECK THIS OUT _f", 0, 0, 0}
+	up <- Assembly{"CHECK THIS OUT v2 _f", 0, 0, 0}
 
-	// Make symbol object
+	// Not necessary, symbol already in register
+	/*// Make symbol object
 	up <- Assembly{"NEW", mem2, 3, 0}
 	up <- Assembly{"SET-INDEXED", mem2, 0, 1}
 	up <- Assembly{"SET-INDEXED", mem2, 1, Type_symbol}
 	up <- Assembly{"COPY-INDEXED", mem2, 2, symbol}
+	//*/
 
 	// Makes new symtab frame
 	up <- Assembly{"NEW", mem, 5, 0}
 	up <- Assembly{"SET-INDEXED", mem, 0, 1}
 	up <- Assembly{"SET-INDEXED", mem, 1, Type_symtab}
-	up <- Assembly{"COPY-INDEXED", mem, 2, mem2}
+	up <- Assembly{"COPY-INDEXED", mem, 2, symbol}
 	up <- Assembly{"COPY-INDEXED", mem, 3, target} // this is a register
 
+	up <- Assembly{"ADD1", target, 0, 0}	// new reference, refcount++
+
+	// Append to symtab
 	up <- Assembly{"DEREF", mem2, env, 6}
 	up <- Assembly{"COPY-INDEXED", mem, 4, mem2}
 	up <- Assembly{"COPY-INDEXED", env, 6, mem}

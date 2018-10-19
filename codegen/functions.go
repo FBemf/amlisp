@@ -250,6 +250,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 		up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
 	}
 
+	// TODO for some reason the closure for '+' is saying it has zero args.
+	// TODO TODO TODO this is the next thing TODO
 	addToSymtab(up, r4, r5, sym.getSymID(builtins["add"], counter), r3, r2)
 
 	close(up)

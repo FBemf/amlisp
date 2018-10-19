@@ -274,10 +274,11 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		// argument for that function
 
 		for m := 1; m < members; m++ {
-
-			// I could *probably* replace this whole block with
-			// addToSymtab if I was willing to rework it to take a
-			// symbol from a register
+			// TODO: When symtabs are created, the values they point to
+			// don't have their refcounts incremented.
+			// TODO: when a symtab is made, a new symbol object is
+			// instantiated instead of just pointing at the old one.
+			// not efficient!
 
 			// Find the ID of the symbol held in the closure
 			up <- Assembly{"DEREF", r3, r4, 4 + m} // r3 = [[r4] + 4+m]
@@ -287,30 +288,6 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			up <- Assembly{"DEREF", r7, r2, 7 + m} // r3 = [[r2] + 7+m]
 			// Add it to symtab
 			addToSymtabRegister(up, r5, r6, r3, r7, r2)
-
-			/*	// So this part is completely redundant now
-			
-			   up <- Assembly{"NEW", r5, 5, 0}                 // This block creates a
-			   up <- Assembly{"SET-INDEXED", r5, 0, 1}         // new symtab frame
-			   up <- Assembly{"SET-INDEXED", r5, 1, Type_symtab}
-
-			   // Find the ID of the symbol held in the closure
-			   up <- Assembly{"DEREF", r3, r4, 4+m}    // r3 = [[r4] + 4+m]
-			   up <- Assembly{"DEREF", r3, r3, 2}      // r3 = [[r3] + 2]
-
-			   // Set the ID in the symbol table cell to that ID
-			   up <- Assembly{"COPY-INDEXED", r5, 2, r3}       // [r5] + 2 = [r3]
-
-			   // Then find the related argument in the function call
-			   // and set the location pointer in the symtab frame to be that
-			   up <- Assembly{"DEREF", r3, r2, 7+m}    // r3 = [[r2] + 7+m]
-			   up <- Assembly{"COPY-INDEXED", r5, 3, r3}       // [r5]+3 = [r3]
-
-			   // Then push it onto the symbol table stack
-			   up <- Assembly{"DEREF", r3, r2, 6}      // r3 = [[r2]+6]
-			   up <- Assembly{"COPY-INDEXED", r5, 4, r3}       // [r5]+4 = [r3]
-			   up <- Assembly{"COPY-INDEXED", r2, 6, r5}       // [r2]+6 = [r5]
-			*/
 		}
 
 		// Give it somewhere to return to
