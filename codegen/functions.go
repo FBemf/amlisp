@@ -40,8 +40,9 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	// so it can be GC'd
 
 	// Ascend the registers to the previous environment
-	up <- Assembly{"COPY-ADD", r2, r1, 0} // the registers here are all fucked up
-	up <- Assembly{"DEREF", r1, r2, 5}    // TODO make them behave
+
+	up <- Assembly{"COPY-ADD", r2, r1, 0}
+	up <- Assembly{"DEREF", r1, r2, 5}
 	up <- Assembly{"DEREF", r0, r2, 4}
 
 	// Garbage Collector

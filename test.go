@@ -11,85 +11,90 @@ import (
 )
 
 func main() {
+	defer func() {
+		exec.Command("stty", "-F", "/dev/tty", "-cbreak").Run()
+	}()
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter code: ")
+	text, _ := reader.ReadString('\n')
+	p := lexparse.Lex(text)
+	fmt.Println(p)
+	t, ok := lexparse.Parse(p)
+	fmt.Println(ok)
+	if ok != nil {
+		fmt.Println("Could not parse!")
+		return
+	}
+	fmt.Println(lexparse.RPrint(t))
+	fmt.Println("Compiling...")
+	code := codegen.GenAssembly(t)
+	fmt.Println()
+	h := assemble(code)
+	fmt.Println("Executing...")
+	// disable input buffering
+	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
+	interactive_interpret(h);
+	/*
+	events := run(h)
+	//fmt.Print(events)
+	fmt.Println("Finished. Post-mortem:")
+
+	var oldCount int = 1
+	var index int = 0
+	var last byte = 'j'
+	var b []byte = make([]byte, 1)
+	var s string = ""
+	fmt.Printf("Line %d.\n", index)
 	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter code: ")
-		text, _ := reader.ReadString('\n')
-		p := lexparse.Lex(text)
-		fmt.Println(p)
-		t, ok := lexparse.Parse(p)
-		fmt.Println(ok)
-		if ok != nil {
+		os.Stdin.Read(b)
+		if b[0] >= byte('0') && b[0] <= byte('9') {
+			s += string(b)
 			continue
 		}
-		fmt.Println(lexparse.RPrint(t))
-		fmt.Println("Compiling...")
-		code := codegen.GenAssembly(t)
-		fmt.Println()
-		h := assemble(code)
-		fmt.Println("Executing...")
-		events := run(h)
-		//fmt.Print(events)
-		fmt.Println("Finished. Post-mortem:")
-
-		var oldCount int = 1
-		var index int = 0
-		var last byte = 'j'
-		var b []byte = make([]byte, 1)
-		_ = strconv.Atoi
-		var s string = ""
-		fmt.Printf("Line %d.\n", index)
-		// disable input buffering
-		exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
-		for {
-			os.Stdin.Read(b)
-			if b[0] >= byte('0') && b[0] <= byte('9') {
-				s += string(b)
-				continue
-			}
-			c, _ := strconv.Atoi(s)
-			s = ""
-			if c == 0 {
-				c++
-			}
-			fmt.Println()
-
-			exec:
-			for i := 0; i < c; i++ {
-				switch (b[0]) {
-				case 'j':
-					if (index < len(events)-1) {
-						index++
-					}
-				case 'k':
-					if (index > 0) {
-						index--
-					}
-				case 'p':
-					fmt.Println(printmem(events[index].mem, &events[index].use, ""))
-				case 'c':
-					fmt.Println(events[index].command)
-				case 'a':
-					events[index].use.printmemuse()
-				case 'g':
-					if 0 > c {
-						index = 0
-					} else if len(events) <= c {
-						index = len(events) - 1
-					} else {
-						index = c
-					}
-				default:
-					b[0] = last
-					c = oldCount
-					goto exec
-				}
-			}
-			fmt.Printf("Line %d.\n", index)
-			oldCount = c
-			last = b[0]
+		c, _ := strconv.Atoi(s)
+		s = ""
+		if c == 0 {
+			c++
 		}
+		fmt.Println()
+
+		exec:
+		for i := 0; i < c; i++ {
+			switch (b[0]) {
+			case 'j':
+				if (index < len(events)-1) {
+					index++
+				}
+			case 'k':
+				if (index > 0) {
+					index--
+				}
+			case 'p':
+				fmt.Println(printmem(events[index].mem, &events[index].use, ""))
+			case 'c':
+				fmt.Println(events[index].command)
+			case 'u':
+				events[index].use.printmemuse()
+			case 'g':
+				if 0 > c {
+					index = 0
+				} else if len(events) <= c {
+					index = len(events) - 1
+				} else {
+					index = c
+				}
+			default:
+				b[0] = last
+				c = oldCount
+				goto exec
+			}
+		}
+		fmt.Printf("Line %d, pos %d: %v\n", index, events[index].position, events[index].command)
+		oldCount = c
+		last = b[0]
 	}
+		//*/
 	return
 }
 
@@ -268,6 +273,7 @@ type instant struct {
 	use memuse
 	largest int
 	message string
+	position int
 }
 
 func enlargeMem(mem []int, size int) []int {
@@ -362,10 +368,175 @@ func run(cmds []codegen.Assembly) []instant {
 		default:
 			message += fmt.Sprintf("SPECIAL COMMAND %s\n", cmd.Command)
 		}
-	memcpy := make([]int, len(mem))
-	copy(memcpy, mem)
-	usecpy := memuseCopy(&use)
-	history = append(history, instant{cmd, memcpy, *usecpy, largest, message})
+
+		memcpy := make([]int, len(mem))
+		copy(memcpy, mem)
+		usecpy := memuseCopy(&use)
+		history = append(history, instant{cmd, memcpy, *usecpy, largest, message, i})
 	}
 	return history
+}
+
+func cmd_push(history *[]instant, cmds *[]codegen.Assembly, mem *[]int, use *memuse, largest *int, i *int) {
+	cmd := (*cmds)[*i]
+	message := ""
+	//fmt.Println(i)
+	//fmt.Println(cmd)
+	//fmt.Println(printInd(mem))
+
+	switch cmd.Command {
+	case "SET-LITERAL":
+		*largest = max(*largest, cmd.Arg1)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1] = cmd.Arg2
+	case "SET-INDEXED":
+		*largest = max(*largest, (*mem)[cmd.Arg1]+cmd.Arg2)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[(*mem)[cmd.Arg1]+cmd.Arg2] = cmd.Arg3
+	case "COPY-ADD":
+		*largest = max(*largest, cmd.Arg1, cmd.Arg2)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1] = (*mem)[cmd.Arg2] + cmd.Arg3
+	case "COPY-INDEXED":
+		*largest = max(*largest, cmd.Arg3, (*mem)[cmd.Arg1]+cmd.Arg2)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[(*mem)[cmd.Arg1]+cmd.Arg2] = (*mem)[cmd.Arg3]
+	case "DEREF":
+		*largest = max(*largest, (*mem)[cmd.Arg2]+cmd.Arg3, (*mem)[cmd.Arg1])
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1] = (*mem)[(*mem)[cmd.Arg2]+cmd.Arg3]
+	case "NEW":
+		*largest = max(*largest, cmd.Arg1)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1], _ = use.alloc((*mem), cmd.Arg2, nil)
+		*largest = max(*largest, (*mem)[cmd.Arg1]+cmd.Arg2-1)
+		(*mem) = enlargeMem((*mem), *largest)
+	case "JUMP-LITERAL":
+		*i = cmd.Arg1 - 1
+	case "JUMP-LITERAL-IF-IS":
+		if (*mem)[cmd.Arg2] == cmd.Arg3 {
+			*i = cmd.Arg1 - 1
+		}
+	case "JUMP-LITERAL-IF-EQ":
+		if (*mem)[cmd.Arg2] == (*mem)[cmd.Arg3] {
+			*i = cmd.Arg1 - 1
+		}
+	case "JUMP":
+		*i = (*mem)[cmd.Arg1] - 1
+	case "JUMP-REMEMBER":
+		(*mem)[(*mem)[cmd.Arg2]] = *i + 1
+		*i = (*mem)[cmd.Arg1] - 1
+	case "EXCEPTION":
+		message += fmt.Sprintln("You threw an exception! Oh my gosh!")
+		break
+	case "ADD1":
+		*largest = max(*largest, (*mem)[cmd.Arg1])
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[(*mem)[cmd.Arg1]] = (*mem)[(*mem)[cmd.Arg1]] + 1
+	case "SUB1":
+		*largest = max(*largest, (*mem)[cmd.Arg1])
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[(*mem)[cmd.Arg1]] = (*mem)[(*mem)[cmd.Arg1]] - 1
+	case "ADD":
+		*largest = max(*largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1] = (*mem)[cmd.Arg2] + (*mem)[cmd.Arg3]
+	case "SUB":
+		*largest = max(*largest, cmd.Arg1, cmd.Arg2, cmd.Arg3)
+		(*mem) = enlargeMem((*mem), *largest)
+		(*mem)[cmd.Arg1] = (*mem)[cmd.Arg2] - (*mem)[cmd.Arg3]
+	case "BREAK!":
+		break
+	default:
+		message += fmt.Sprintf("SPECIAL COMMAND %s\n", cmd.Command)
+	}
+	memcpy := make([]int, len((*mem)))
+	copy(memcpy, (*mem))
+	usecpy := memuseCopy(use)
+	*history = append(*history, instant{cmd, memcpy, *usecpy, *largest, message, *i})
+	(*i)++
+}
+
+func interactive_interpret(cmds []codegen.Assembly) {
+	mem := make([]int, 20, 1000)
+	rest := memuse{false, 13, 1000, nil}
+	use := memuse{true, 0, 13, &rest}
+	largest := 0
+	history := make([]instant, 0, 400)
+	position := 0
+
+	var oldCount int = 1
+	var index int = 0
+	var top int = 0
+	var last byte = 'j'
+	var b []byte = make([]byte, 1)
+	var s string = ""
+	fmt.Printf("Line %d, pos %d: %v\n", index, 0, cmds[0])
+	cmd_push(&history, &cmds, &mem, &use, &largest, &position)
+	for {
+		os.Stdin.Read(b)
+		if b[0] >= byte('0') && b[0] <= byte('9') {
+			s += string(b)
+			continue
+		}
+		c, _ := strconv.Atoi(s)
+		s = ""
+		if c == 0 {
+			c++
+		}
+		fmt.Println()
+
+		exec:
+		for i := 0; i < c; i++ {
+			switch (b[0]) {
+			case 'j':
+				if index < len(history)-1 {
+					index++
+				} else if (position < len(cmds)) {
+					index++
+					if index > top {
+						cmd_push(&history, &cmds, &mem, &use, &largest, &position)
+						top++
+					}
+				}
+			case 'k':
+				if (index > 0) {
+					index--
+				}
+			case 'p':
+				fmt.Println(printmem(history[index].mem, &history[index].use, ""))
+			case 'c':
+				fmt.Println(history[index].command)
+			case 'u':
+				history[index].use.printmemuse()
+			case 'g':
+				if 0 > c {
+					index = 0
+				} else if index > c {
+					index = c
+				} else {
+					for {
+						if index < len(history)-1 {
+							index++
+						} else if (position < len(cmds)) {
+							index++
+							if index > top {
+								cmd_push(&history, &cmds, &mem, &use, &largest, &position)
+								top++
+							}
+						} else {
+							break
+						}
+					}
+				}
+			default:
+				b[0] = last
+				c = oldCount
+				goto exec
+			}
+		}
+		fmt.Printf("Line %d, pos %d: %v\n", index, history[index].position, history[index].command)
+		oldCount = c
+		last = b[0]
+	}
 }

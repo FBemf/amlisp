@@ -8,6 +8,7 @@ import (
 )
 
 func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, quoted bool) {
+	up <- Assembly{"CALL-BEGIN _f", 0, 0, 0}
 	// If this ast is an empty node, don't do anything
 	if ast.IsEmpty() {
 		close(up)
@@ -271,8 +272,6 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		// table so that the top entry with that symbol will hold the relevant
 		// argument for that function
 
-		// TODO THIS PLACE IS COMMAND 168 RN
-
 		for m := 1; m < members; m++ {
 
 			// I could *probably* replace this whole block with
@@ -321,6 +320,11 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		up <- Assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to the cell
 		// in our environment and jump
 		// into the function
+
+		// Go to finishfunc to clear up this env
+		// TODO this breaks the code.
+		//up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+
 	}
 	close(up)
 	return
