@@ -323,8 +323,15 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 
 		// Go to finishfunc to clear up this env
 		// TODO this breaks the code.
+		// TODO the argument here has to point to somewhere to store the ptr, it isn't
+		// just a register to store it in. It's indirect.
+
+		// Give it somewhere to return to
+		up <- Assembly{"DEREF", r0, r2, 4}
+		// Lastly, make the jump into the function's runtime
+		up <- Assembly{"DEREF", r4, r4, 2}         // Grab jump location // changed 3 to 2
+		up <- Assembly{"COPY-ADD", r3, r2, 3}      // r3 = [r2] + 3
 		up <- Assembly{"JUMP-LABEL-REMEMBER", sym.getSymID(builtins["FINISHFUNC"], counter), r3, 0}
-		up <- Assembly {"EXCEPION",0,0,0}
 
 	}
 	close(up)

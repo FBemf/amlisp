@@ -517,13 +517,10 @@ func interactive_interpret(cmds []codegen.Assembly) {
 				history[index].use.printmemuse()
 			case 'g':
 				if 0 > c {
-					fmt.Println("ONE")
 					index = 0
 				} else if index > c {
-					fmt.Println("TWO")
 					index = c
 				} else {
-					fmt.Println("THREE")
 					for {
 						if index < len(history)-1 && index < c {
 							index++
