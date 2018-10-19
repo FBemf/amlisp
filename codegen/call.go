@@ -43,6 +43,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			} else {
 				up <- Assembly{"VARIABLE SYMBOL _f", 0, 0, 0}
 				querySymtab(up, r4, r3, r2, sym.getSymID(p.Value(), counter), counter)
+				up <- Assembly{"ADD1", r4, 0, 0}
 				up <- Assembly{"COPY-INDEXED", r0, 0, r4}
 			}
 		default:

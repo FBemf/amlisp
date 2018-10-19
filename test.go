@@ -216,7 +216,6 @@ func printmem(mem []int, use *memuse, glob string) string {
 		codegen.Type_vector: "VEC",
 		codegen.Type_int: "INT",
 		codegen.Type_symbol: "SYM"}
-	_ = types
 
 	s := "["
 	if use.start == 0 {

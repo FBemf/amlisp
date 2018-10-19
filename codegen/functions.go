@@ -24,6 +24,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"BOILERPLATE-FOR_FF _f", 0, 0, 0}
 	up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
 	up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+	up <- Assembly{"FINFUN _f", 0, 0, 0}
 	up <- Assembly{"DEREF", r3, r0, 0} // Grab return value
 	up <- Assembly{"ADD1", r3, 0, 0}   // Add to the refcount of the thing being returned
 
@@ -59,7 +60,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	// Check if refcount is zero--jump past GC if it isn't
 	skip_jump_de := counter()
 	dump_end := counter()
-	up <- Assembly{"COPY-ADD", r4, r5, 1}
+	up <- Assembly{"DEREF", r4, r5, 0}
 	up <- Assembly{"JUMP-LABEL-IF-IS", skip_jump_de, r4, 0}
 	up <- Assembly{"JUMP-LABEL", dump_end, 0, 0}
 	up <- Assembly{"LABEL", skip_jump_de, 0, 0}
@@ -85,10 +86,10 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	// i) new data structure
 	// ii) populate new data structure
 	up <- Assembly{"NEW", r4, 4, 0}
-	up <- Assembly{"SET-INDEXED", r4, 1, 0}
-	up <- Assembly{"SET-INDEXED", r4, 2, Type_dump}
-	up <- Assembly{"COPY-INDEXED", r4, 3, r5}
-	up <- Assembly{"SET-INDEXED", r4, 4, 0}
+	up <- Assembly{"SET-INDEXED", r4, 0, 0}
+	up <- Assembly{"SET-INDEXED", r4, 1, Type_dump}
+	up <- Assembly{"COPY-INDEXED", r4, 2, r5}
+	up <- Assembly{"SET-INDEXED", r4, 3, 0}
 
 	/* Review of set commands
 	   SET-LITERAL a b c ->    a = b
@@ -104,7 +105,11 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"LABEL", dump_start, 0, 0}
 
 	// iv) Set refcount of env to -1
-	up <- Assembly{"COPY-ADD", r5, 0, -1}
+	// THIS STEP IS WRONG. You have to do this AFTER
+	// you allocate the new dump frames or the current env
+	// will be overwritten!
+	//up <- Assembly{"SET-INDEXED", r5, 0, -1}
+	// TODO remove this shit
 
 	// v) Switch on type, either jump to "continue" or set start + length
 	switch_end := counter()
@@ -113,11 +118,12 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	switch_type_symtab := counter()
 	// TODO ... other types
 
-	up <- Assembly{"COPY-ADD", r5, r5, 1}
-	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_int, r5, Type_int}
-	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_env, r5, Type_environment}
-	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symtab, r5, Type_symtab}
+	up <- Assembly{"DEREF", r6, r5, 1}
+	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_int, r6, Type_int}
+	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_env, r6, Type_environment}
+	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symtab, r6, Type_symtab}
 	// TODO ... other types
+	up <- Assembly{"EXCEPTION", 456, 0, 0}
 
 	up <- Assembly{"LABEL", switch_type_int, 0, 0} // int
 	// labels for other non-pointer data types
@@ -125,15 +131,16 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
 	// env -- at the start of all of these, r5 is pointing to the "type" box
 	up <- Assembly{"LABEL", switch_type_env, 0, 0}
-	up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+6, minus one to get symtab too
-	up <- Assembly{"DEREF", r5, r5, 1}    // length
-	up <- Assembly{"ADD", r5, r5, r6}     // one after last pointer
+	up <- Assembly{"COPY-ADD", r6, r5, 6} // first pointer is r5+7, minus one to get symtab too
+	up <- Assembly{"DEREF", r5, r5, 2}    // length
+	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
+	up <- Assembly{"COPY-ADD", r5, r5, 1}     // one after last pointer
 	up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
 
 	// symtab
 	up <- Assembly{"LABEL", switch_type_symtab, 0, 0}
-	up <- Assembly{"COPY-ADD", r6, r5, 1} // first pointer is r5+1
-	up <- Assembly{"COPY-ADD", r5, r5, 4} // one after last pointer
+	up <- Assembly{"COPY-ADD", r6, r5, 2} // first pointer is r5+2
+	up <- Assembly{"COPY-ADD", r5, r5, 5} // one after last pointer
 	up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
 
 	// TODO .. other pointer-set types
@@ -150,34 +157,52 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"JUMP-LABEL-IF-EQ", dump_continue, r5, r6} // if-is compares a register to a literal
 	// if-eq compares two registers
 
+	// IMPORTANT STEPS THAT WERE MISSING
+	//   i) Decrement the refcount
+	up <- Assembly{"DEREF", r7, r6, 0}
+	up <- Assembly{"SUB1", r7, 0, 0}
+	//   ii) Check if the refcount is zero
+	isDeadMem := counter()
+	up <- Assembly{"DEREF", r7, r7, 0}
+	up <- Assembly{"JUMP-LABEL-IF-IS", isDeadMem, r7, 0}
+	//   iii) If it isn't, r6++, next segment
+	up <- Assembly{"COPY-ADD", r6, r6, 1}
+	up <- Assembly{"JUMP-LABEL", rec_loop, 0, 0}
+	//   if it is, continue
+	up <- Assembly{"LABEL", isDeadMem, 0, 0}
+
 	// viii) otherwise, new ds frame
 	// ix) populate data structure frame
 	up <- Assembly{"NEW", r7, 4, 0}
-	up <- Assembly{"SET-INDEXED", r7, 1, 0}
-	up <- Assembly{"SET-INDEXED", r7, 2, Type_dump}
-	up <- Assembly{"COPY-INDEXED", r7, 3, r6}
-	up <- Assembly{"DEREF", r8, r4, 4}
-	up <- Assembly{"COPY-INDEXED", r7, 4, r8}
+	up <- Assembly{"SET-INDEXED", r7, 0, 0}
+	up <- Assembly{"SET-INDEXED", r7, 1, Type_dump}
+	up <- Assembly{"DEREF", r8, r6, 0}
+	up <- Assembly{"COPY-INDEXED", r7, 2, r8}
+	up <- Assembly{"DEREF", r8, r4, 3}
+	up <- Assembly{"COPY-INDEXED", r7, 3, r8}
 
 	// x) stick ds frame into list
-	up <- Assembly{"COPY-INDEXED", r4, 4, r7}
+	up <- Assembly{"COPY-INDEXED", r4, 3, r7}
 
 	// xi) next pointer
-	up <- Assembly{"COPY-ADD", r5, r5, 1}
+	up <- Assembly{"COPY-ADD", r6, r6, 1}
 
 	// xii) continue loop 2
 	up <- Assembly{"JUMP-LABEL", rec_loop, 0, 0}
 
 	// xiii) set current ds frame refcount to -1 (this is where "continue" is)
 	up <- Assembly{"LABEL", dump_continue, 0, 0}
+	up <- Assembly{"DEREF", r7, r4, 2}
+	up <- Assembly{"SET-INDEXED", r7, 0, -1}
 	up <- Assembly{"SET-INDEXED", r4, 0, -1}
 
 	// xiv) if next frame zero, exit
-	up <- Assembly{"COPY-ADD", r4, r4, 3}
+	up <- Assembly{"DEREF", r4, r4, 3}
 	up <- Assembly{"JUMP-LABEL-IF-IS", dump_end, r4, 0}
 
 	// xv) otherwise, next frame, continue loop 1
-	up <- Assembly{"DEREF", r4, r4, 3}
+	// set r5 to be the data struct
+	up <- Assembly{"DEREF", r5, r4, 2}
 	up <- Assembly{"JUMP-LABEL", dump_start, 0, 0}
 	up <- Assembly{"LABEL", dump_end, 0, 0}
 	up <- Assembly{"BOILERPLATE END _f", 0, 0, 0}
