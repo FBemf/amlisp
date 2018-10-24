@@ -85,6 +85,7 @@ func addToSymtabRegister(up chan Assembly, mem int, mem2 int, symbol int, target
 	up <- Assembly{"COPY-INDEXED", mem, 3, target} // this is a register
 
 	up <- Assembly{"ADD1", target, 0, 0}	// new reference, refcount++
+	up <- Assembly{"ADD1", symbol, 0, 0}	// new reference, refcount++
 
 	// Append to symtab
 	up <- Assembly{"DEREF", mem2, env, 6}

@@ -25,8 +25,6 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"JUMP-LABEL", endFinishFunc, 0, 0}
 	up <- Assembly{"LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
 	up <- Assembly{"FINFUN _f", 0, 0, 0}
-	up <- Assembly{"DEREF", r3, r0, 0} // Grab return value
-	up <- Assembly{"ADD1", r3, 0, 0}   // Add to the refcount of the thing being returned
 
 	fakeEnvLabel := counter()
 	// a func with no env (hardcoded & optimized) shouldn't have its env
@@ -218,6 +216,8 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	endAddFunc := counter()
 	up <- Assembly{"JUMP-LABEL", endAddFunc, 0, 0}
 	up <- Assembly{"LABEL", sym.getSymID(builtins["add"], counter), 0, 0}
+	up <- Assembly{"EXEC ADD FUNC _f", 0, 0, 0}
+	up <- Assembly{"COPY-ADD", r1, r2, 0}
 	up <- Assembly{"NEW", r3, 3, 0} // new int
 	up <- Assembly{"SET-INDEXED", r3, 0, 1}
 	up <- Assembly{"SET-INDEXED", r3, 1, Type_int}
@@ -241,7 +241,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
 	up <- Assembly{"SET-LABEL-INDEXED", r3, 2, sym.getSymID(builtins["add"], counter)} // sets a cell to be a label.
 	up <- Assembly{"COPY-INDEXED", r3, 3, r2}
-	up <- Assembly{"COPY-INDEXED", r3, 4, 2}
+	up <- Assembly{"SET-INDEXED", r3, 4, 2}
 	for i := 0; i < 2; i++ {
 		up <- Assembly{"NEW", r4, 3, 0}
 		up <- Assembly{"SET-INDEXED", r4, 0, 1}
@@ -250,8 +250,6 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 		up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
 	}
 
-	// TODO for some reason the closure for '+' is saying it has zero args.
-	// TODO TODO TODO this is the next thing TODO
 	addToSymtab(up, r4, r5, sym.getSymID(builtins["add"], counter), r3, r2)
 
 	close(up)

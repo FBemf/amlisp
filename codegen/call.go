@@ -280,9 +280,13 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			// instantiated instead of just pointing at the old one.
 			// not efficient!
 
-			// Find the ID of the symbol held in the closure
+			// WRONG:Find the ID of the symbol held in the closure
+			//up <- Assembly{"DEREF", r3, r4, 4 + m} // r3 = [[r4] + 4+m]
+			//up <- Assembly{"DEREF", r3, r3, 2}     // r3 = [[r3] + 2]
+
+			// Find the location of the symbol
 			up <- Assembly{"DEREF", r3, r4, 4 + m} // r3 = [[r4] + 4+m]
-			up <- Assembly{"DEREF", r3, r3, 2}     // r3 = [[r3] + 2]
+
 			// Then find the related argument in the function call
 			// and set the location pointer in the symtab frame to be that
 			up <- Assembly{"DEREF", r7, r2, 7 + m} // r3 = [[r2] + 7+m]
@@ -309,6 +313,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		// Lastly, make the jump into the function's runtime
 		up <- Assembly{"DEREF", r4, r4, 2}         // Grab jump location // changed 3 to 2
 		up <- Assembly{"COPY-ADD", r3, r2, 3}      // r3 = [r2] + 3
+		up <- Assembly{"TIME TO CLEAN UP _f", 0, 0, 0}
 		up <- Assembly{"JUMP-LABEL-REMEMBER", sym.getSymID(builtins["FINISHFUNC"], counter), r3, 0}
 
 	}
