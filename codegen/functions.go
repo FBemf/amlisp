@@ -122,6 +122,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
 	up <- Assembly{"DEREF", r6, r5, 1}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_int, r6, Type_int}
+	up <- Assembly{"HEYOOO", 0, 0, 0}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symbol, r6, Type_symbol}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_env, r6, Type_environment}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_closure, r6, Type_closure}
@@ -130,19 +131,20 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"EXCEPTION", 456, 0, 0}
 
 	up <- Assembly{"LABEL", switch_type_int, 0, 0} // int
+	up <- Assembly{"LABEL", switch_type_symbol, 0, 0} // int
 	// labels for other non-pointer data types
 	up <- Assembly{"JUMP-LABEL", dump_continue, 0, 0}
 
-	// env -- at the start of all of these, r5 is pointing to the "type" box
-	up <- Assembly{"LABEL", switch_type_env, 0, 0}
+	// closure
+	up <- Assembly{"LABEL", switch_type_closure, 0, 0}
 	up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+5
 	up <- Assembly{"DEREF", r5, r5, 4}    // length
 	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
 	up <- Assembly{"COPY-ADD", r5, r5, 1}     // one after last pointer
 	up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
 
-	// closure
-	up <- Assembly{"LABEL", switch_type_closure, 0, 0}
+	// env -- at the start of all of these, r5 is pointing to the "type" box
+	up <- Assembly{"LABEL", switch_type_env, 0, 0}
 	up <- Assembly{"COPY-ADD", r6, r5, 6} // first pointer is r5+7, minus one to get symtab too
 	up <- Assembly{"DEREF", r5, r5, 2}    // length
 	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
