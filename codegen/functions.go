@@ -2,7 +2,7 @@ package codegen
 
 import "strconv"
 
-// TODO TODO TODO ((func (x) (+ 101 x)) 202)
+// TODO TODO TODO ((func (a b) (+ a b)) 101 202)
 
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
