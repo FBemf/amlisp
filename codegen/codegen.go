@@ -23,7 +23,8 @@ func GenAssembly(ast lexparse.Ast) []Assembly {
 		"if":           "if",
 		"define":       "define",
 		"FUNCTION":     "func",
-		"FINISHFUNC":   "finishfunc"}
+		"FINISHFUNC":   "_finishfunc",
+		"DEFUN":	"_defun" }
 
 	// This declares the internal functions
 	boilerplate := make(chan Assembly)

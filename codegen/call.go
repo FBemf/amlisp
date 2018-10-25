@@ -90,8 +90,9 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		funcStart = counter()
 		funcEnd = counter()
 		up <- Assembly{"FUNC DEF _f", 0, 0, 0}
-		up <- Assembly{"JUMP-LABEL", funcEnd, 0, 0}
-		up <- Assembly{"LABEL", funcStart, 0, 0}
+		up <- Assembly{"SET-LITERAL", r4, r4, 0}
+		up <- Assembly{"JUMP-LABEL-REMEMBER", funcEnd, r4, 0}
+		up <- Assembly{"LABEL", funcStart, 0, 0}	// TODO: get rid of this label, it's obviated by the remember.
 
 		// We also prune off the "func" keyword
 		// and the list of arguments, because
@@ -141,6 +142,10 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 	up <- Assembly{"SET-INDEXED", r2, 0, 1}
 	up <- Assembly{"SET-INDEXED", r2, 1, Type_environment}
 	up <- Assembly{"SET-INDEXED", r2, 2, members}
+	if isFunc {	// grabs a pc to return to if this is a fn call
+		up <- Assembly{"DEREF", r3, r1, 3}
+		up <- Assembly{"COPY-INDEXED", r2, 3, r3}
+	}
 	up <- Assembly{"COPY-INDEXED", r2, 4, r0}
 	up <- Assembly{"COPY-INDEXED", r2, 5, r1} // Assumes r1 is return env
 	up <- Assembly{"DEREF", r3, r1, 6}
@@ -178,6 +183,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 	// extra steps
 	if isFunc {
 		up <- Assembly{"DEREF", r3, r2, members + 6} // The last "argument" of this
+		up <- Assembly{"ADD1", r3, 0, 0}	// +1 to refcount
 		up <- Assembly{"COPY-INDEXED", r0, 0, r3}    // function is the last expression
 		// in the function's definition.
 		// Here we take the result of it
@@ -221,12 +227,12 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		// vi)  Args: This is the first of arbitrarily many pointers to symbols
 		//      defining arguments for this function.
 		// contents of a closure: refcount, type, pc addr, parent env loc, length, args ...
-		up <- Assembly{"NEW", r3, args + 4, 0}
+		up <- Assembly{"NEW", r3, args + 5, 0}
 		up <- Assembly{"SET-INDEXED", r3, 0, 1}
 		up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
-		up <- Assembly{"SET-INDEXED", r3, 2, funcStart}
+		up <- Assembly{"COPY-INDEXED", r3, 2, r4}
 		up <- Assembly{"COPY-INDEXED", r3, 3, r2}
-		up <- Assembly{"COPY-INDEXED", r3, 4, args}
+		up <- Assembly{"SET-INDEXED", r3, 4, args}
 		for i := 0; i < args; i++ {
 			up <- Assembly{"NEW", r4, 3, 0}
 			up <- Assembly{"SET-INDEXED", r4, 0, 1}
@@ -237,8 +243,14 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 
 		up <- Assembly{"COPY-INDEXED", r0, 0, r3} // Return this closure to the
 		// function defining it
-		// Jump to finishfunc to clean up
-		up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+
+		// Drop down the parent env so that it's
+		// clear to the GC that this is a pseudofunction-call
+		up <- Assembly{"COPY-ADD", r1, r2, 0}
+
+		// Jump to defun, then finishfunc to clean up
+		up <- Assembly{"SET-LITERAL", r3, r3, 0}
+		up <- Assembly{"JUMP-LABEL-REMEMBER", sym.getSymID(builtins["DEFUN"], counter), r3, 0}
 		up <- Assembly{"FUNC RETURN END _f", 0, 0, 0}
 
 	} else {

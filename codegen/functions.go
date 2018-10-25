@@ -2,6 +2,8 @@ package codegen
 
 import "strconv"
 
+// TODO TODO TODO ((func (x) (+ 101 x)) 202)
+
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
 	// All builtin funcs follow these rules:
@@ -112,13 +114,17 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	// v) Switch on type, either jump to "continue" or set start + length
 	switch_end := counter()
 	switch_type_int := counter()
+	switch_type_symbol := counter()
 	switch_type_env := counter()
+	switch_type_closure := counter()
 	switch_type_symtab := counter()
 	// TODO ... other types
 
 	up <- Assembly{"DEREF", r6, r5, 1}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_int, r6, Type_int}
+	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symbol, r6, Type_symbol}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_env, r6, Type_environment}
+	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_closure, r6, Type_closure}
 	up <- Assembly{"JUMP-LABEL-IF-IS", switch_type_symtab, r6, Type_symtab}
 	// TODO ... other types
 	up <- Assembly{"EXCEPTION", 456, 0, 0}
@@ -129,6 +135,14 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
 	// env -- at the start of all of these, r5 is pointing to the "type" box
 	up <- Assembly{"LABEL", switch_type_env, 0, 0}
+	up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+5
+	up <- Assembly{"DEREF", r5, r5, 4}    // length
+	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
+	up <- Assembly{"COPY-ADD", r5, r5, 1}     // one after last pointer
+	up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
+
+	// closure
+	up <- Assembly{"LABEL", switch_type_closure, 0, 0}
 	up <- Assembly{"COPY-ADD", r6, r5, 6} // first pointer is r5+7, minus one to get symtab too
 	up <- Assembly{"DEREF", r5, r5, 2}    // length
 	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
@@ -251,6 +265,17 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	}
 
 	addToSymtab(up, r4, r5, sym.getSymID(builtins["add"], counter), r3, r2)
+
+	// 'defun'
+	// just stores the pc, doesn't even do anything outside of the call
+	endDefun := counter()
+	up <- Assembly{"JUMP-LABEL", endDefun, 0, 0}
+	up <- Assembly{"LABEL", sym.getSymID(builtins["DEFUN"], counter), 0, 0}
+	up <- Assembly{"EXEC DEFUN _f", 0, 0, 0}
+	up <- Assembly{"COPY-INDEXED", r2, 3, r3}	// save our pc
+	up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+	up <- Assembly{"LABEL", endDefun, 0, 0}
+
 
 	close(up)
 }
