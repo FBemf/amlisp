@@ -2,8 +2,6 @@ package codegen
 
 import "strconv"
 
-// TODO TODO TODO ((func (a b) (+ a b)) 101 202)
-
 func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 
 	// All builtin funcs follow these rules:
@@ -139,8 +137,7 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"LABEL", switch_type_closure, 0, 0}
 	up <- Assembly{"COPY-ADD", r6, r5, 5} // first pointer is r5+5
 	up <- Assembly{"DEREF", r5, r5, 4}    // length
-	up <- Assembly{"ADD", r5, r5, r6}     // last pointer
-	up <- Assembly{"COPY-ADD", r5, r5, 1}     // one after last pointer
+	up <- Assembly{"ADD", r5, r5, r6}     // one after last pointer
 	up <- Assembly{"JUMP-LABEL", switch_end, 0, 0}
 
 	// env -- at the start of all of these, r5 is pointing to the "type" box
@@ -277,6 +274,70 @@ func defaultFuncs(up chan Assembly, counter func() int, sym *safeSym) {
 	up <- Assembly{"COPY-INDEXED", r2, 3, r3}	// save our pc
 	up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
 	up <- Assembly{"LABEL", endDefun, 0, 0}
+
+
+	// define
+	endDefineFunc := counter()
+	up <- Assembly{"JUMP-LABEL", endDefineFunc, 0, 0}
+	up <- Assembly{"LABEL", sym.getSymID(builtins["define"], counter), 0, 0}
+	up <- Assembly{"EXEC DEF FUNC _f", 0, 0, 0}
+
+	querySymtab(up, r4, r5, r2, sym.getSymID("_def_arg_0", counter), counter)
+	querySymtab(up, r5, r6, r2, sym.getSymID("_def_arg_1", counter), counter)
+
+	up <- Assembly{"DEREF", r3, r2, 5}	// grab parent
+	addToSymtabRegister(up, r7, r8, r4, r5, r3)
+	up <- Assembly{"COPY-INDEXED", r0, 0, r5}
+	up <- Assembly{"ADD1", r5, 0, 0} // TODO not sure if I should have this here?
+
+	up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+	up <- Assembly{"LABEL", endDefineFunc, 0, 0}
+
+	// create closure
+	up <- Assembly{"DEFINE DEF _f", 0, 0, 0}
+	up <- Assembly{"NEW", r3, 7, 0}
+	up <- Assembly{"SET-INDEXED", r3, 0, 1}
+	up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
+	up <- Assembly{"SET-LABEL-INDEXED", r3, 2, sym.getSymID(builtins["define"], counter)} // sets a cell to be a label.
+	up <- Assembly{"COPY-INDEXED", r3, 3, r2}
+	up <- Assembly{"SET-INDEXED", r3, 4, 2}
+	for i := 0; i < 2; i++ {
+		up <- Assembly{"NEW", r4, 3, 0}
+		up <- Assembly{"SET-INDEXED", r4, 0, 1}
+		up <- Assembly{"SET-INDEXED", r4, 1, Type_symbol}
+		up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID("_def_arg_"+strconv.Itoa(i), counter)}
+		up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
+	}
+	addToSymtab(up, r4, r5, sym.getSymID(builtins["define"], counter), r3, r2)
+
+
+	// iquote
+	endQuoteFunc := counter()
+	up <- Assembly{"JUMP-LABEL", endQuoteFunc, 0, 0}
+	up <- Assembly{"LABEL", sym.getSymID(builtins["SYMBOL-QUOTE"], counter), 0, 0}
+	up <- Assembly{"EXEC IQUOTE FUNC _f", 0, 0, 0}
+	querySymtab(up, r4, r5, r2, sym.getSymID("_quot_arg_0", counter), counter)
+	up <- Assembly{"COPY-INDEXED", r0, 0, r4}	// return the value
+	up <- Assembly{"ADD1", r4, 0, 0}		// add to refcount
+	up <- Assembly{"JUMP-LABEL", sym.getSymID(builtins["FINISHFUNC"], counter), 0, 0}
+	up <- Assembly{"LABEL", endQuoteFunc, 0, 0}	// really simple stuff
+
+	// create closure
+	up <- Assembly{"DEFINE QUOTE _f", 0, 0, 0}
+	up <- Assembly{"NEW", r3, 6, 0}
+	up <- Assembly{"SET-INDEXED", r3, 0, 1}
+	up <- Assembly{"SET-INDEXED", r3, 1, Type_closure}
+	up <- Assembly{"SET-LABEL-INDEXED", r3, 2, sym.getSymID(builtins["SYMBOL-QUOTE"], counter)} // sets a cell to be a label.
+	up <- Assembly{"COPY-INDEXED", r3, 3, r2}
+	up <- Assembly{"SET-INDEXED", r3, 4, 1}
+	for i := 0; i < 1; i++ {
+		up <- Assembly{"NEW", r4, 3, 0}
+		up <- Assembly{"SET-INDEXED", r4, 0, 1}
+		up <- Assembly{"SET-INDEXED", r4, 1, Type_symbol}
+		up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID("_quot_arg_"+strconv.Itoa(i), counter)}
+		up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
+	}
+	addToSymtab(up, r4, r5, sym.getSymID(builtins["SYMBOL-QUOTE"], counter), r3, r2)
 
 
 	close(up)

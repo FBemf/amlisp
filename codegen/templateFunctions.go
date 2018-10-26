@@ -21,7 +21,7 @@ func querySymtab(up chan Assembly, mem int, mem2 int, env int, target int, count
 	up <- Assembly{"JUMP-LABEL-IF-IS", bad, mem, 0}
 	up <- Assembly{"JUMP-LABEL", loop, 0, 0}
 	up <- Assembly{"LABEL", bad, 0, 0}
-	up <- Assembly{"EXCEPTION", Ex_undefined, 0, 0}
+	up <- Assembly{"EXCEPTION", Ex_undefined, 101010, 0}
 	up <- Assembly{"LABEL", end, 0, 0}
 	up <- Assembly{"DEREF", mem, mem, 3}
 }

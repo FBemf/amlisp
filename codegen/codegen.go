@@ -13,14 +13,14 @@ func GenAssembly(ast lexparse.Ast) []Assembly {
 
 	// Symbol table of builtin funcs
 	builtins = map[string]string{
-		"SYMBOL-QUOTE": "internal-quote",
+		"SYMBOL-QUOTE": "iquote",
 		"add":          "+",
-		"subtract":     "sub",
-		"cons":         "cons",
-		"car":          "car",
-		"cdr":          "cdr",
-		"empty":        "empty",
-		"if":           "if",
+		//"subtract":     "sub",
+		//"cons":         "cons",
+		//"car":          "car",
+		//"cdr":          "cdr",
+		//"empty":        "empty",
+		//"if":           "if",
 		"define":       "define",
 		"FUNCTION":     "func",
 		"FINISHFUNC":   "_finishfunc",

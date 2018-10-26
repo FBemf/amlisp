@@ -38,7 +38,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 				up <- Assembly{"NEW", r3, 3, 0}
 				up <- Assembly{"SET-INDEXED", r3, 0, 1}                                // refcount
 				up <- Assembly{"SET-INDEXED", r3, 1, Type_symbol}                      // type
-				up <- Assembly{"SET-LITERAL", r3, 2, sym.getSymID(p.Value(), counter)} // val
+				up <- Assembly{"SET-INDEXED", r3, 2, sym.getSymID(p.Value(), counter)} // val
 				up <- Assembly{"COPY-INDEXED", r0, 0, r3}
 			} else {
 				up <- Assembly{"VARIABLE SYMBOL _f", 0, 0, 0}
@@ -207,6 +207,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 				args++
 			}
 		}
+		fmt.Printf("ARGS: %d\n", args)
 
 		// Create and populate a closure to return
 		// Closures are how the runtime stores defined functions.
@@ -239,8 +240,6 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			up <- Assembly{"SET-INDEXED", r4, 0, 1}
 			up <- Assembly{"SET-INDEXED", r4, 1, Type_symbol}
 			up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID(currentVar.This().Primitive().Value(), counter)}
-			fmt.Println(currentVar.This().Primitive().Value())
-			fmt.Printf("HEY HEY WHAT UP %v BOYY\n", currentVar.This().Primitive().Value())
 			up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
 			currentVar = currentVar.Next()
 		}
@@ -310,11 +309,15 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 			addToSymtabRegister(up, r5, r6, r3, r7, r2)
 		}
 
+		up <- Assembly{"ABOUT TO CALL _f", 0, 0, 0}
 		// Give it somewhere to return to
 		up <- Assembly{"DEREF", r0, r2, 4}
 		// Lastly, make the jump into the function's runtime
 		up <- Assembly{"DEREF", r4, r4, 2}         // Grab jump location // changed 3 to 2
 		up <- Assembly{"COPY-ADD", r3, r2, 3}      // r3 = [r2] + 3
+
+		up <- Assembly{"COPY-ADD", r1, r2, 0}
+
 		up <- Assembly{"JUMP-REMEMBER", r4, r3, 0} // saves next pc to the cell
 		// in our environment and jump
 		// into the function
