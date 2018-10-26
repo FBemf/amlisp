@@ -233,12 +233,16 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		up <- Assembly{"COPY-INDEXED", r3, 2, r4}
 		up <- Assembly{"COPY-INDEXED", r3, 3, r2}
 		up <- Assembly{"SET-INDEXED", r3, 4, args}
+		currentVar := argAst
 		for i := 0; i < args; i++ {
 			up <- Assembly{"NEW", r4, 3, 0}
 			up <- Assembly{"SET-INDEXED", r4, 0, 1}
 			up <- Assembly{"SET-INDEXED", r4, 1, Type_symbol}
-			up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID(argAst.Node().This().Primitive().Value(), counter)}
+			up <- Assembly{"SET-INDEXED", r4, 2, sym.getSymID(currentVar.This().Primitive().Value(), counter)}
+			fmt.Println(currentVar.This().Primitive().Value())
+			fmt.Printf("HEY HEY WHAT UP %v BOYY\n", currentVar.This().Primitive().Value())
 			up <- Assembly{"COPY-INDEXED", r3, 5 + i, r4}
+			currentVar = currentVar.Next()
 		}
 
 		up <- Assembly{"COPY-INDEXED", r0, 0, r3} // Return this closure to the
@@ -323,6 +327,7 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 		// Give it somewhere to return to
 		up <- Assembly{"DEREF", r0, r2, 4}
 		// Lastly, make the jump into the function's runtime
+		up <- Assembly{"DEREF", r4, r2, 7} // Get the relevant closure
 		up <- Assembly{"DEREF", r4, r4, 2}         // Grab jump location // changed 3 to 2
 		up <- Assembly{"COPY-ADD", r3, r2, 3}      // r3 = [r2] + 3
 		up <- Assembly{"TIME TO CLEAN UP _f", 0, 0, 0}
