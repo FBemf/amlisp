@@ -207,7 +207,6 @@ func call(up chan Assembly, ast lexparse.Ast, counter func() int, sym *safeSym, 
 				args++
 			}
 		}
-		fmt.Printf("ARGS: %d\n", args)
 
 		// Create and populate a closure to return
 		// Closures are how the runtime stores defined functions.
