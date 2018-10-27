@@ -19,8 +19,7 @@ can run a command like
 	((func ()
 		(define (iquote a) (func (a b c d) (a (b c) d)))
 		(define (iquote b) 101)
-		(define (iquote c) (func (a) (+ a 202)))
-		(a + c 202 b)))
+		(a + (func (a) (+ a 202)) 303 b)))
 
 and have it return `606`, just as expected. It sets up all the scopes
 and stuff necessary for a functional language to work, and the fact
